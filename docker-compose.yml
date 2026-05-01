@@ -1,0 +1,162 @@
+version: '3.8'
+
+x-airflow-common:
+  &airflow-common
+  build: .
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+    AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type": "http", "url": "http://marquez:5000", "endpoint": "api/v1/lineage"}'
+    AIRFLOW__OPENLINEAGE__NAMESPACE: 'my_data_stack'
+    AIRFLOW_CONN_DATA_WAREHOUSE: postgresql://airflow:airflow@postgres/warehouse
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'True'
+  user: "${AIRFLOW_UID:-50000}:0"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./dbt:/opt/airflow/dbt
+    - ./great_expectations:/opt/airflow/great_expectations
+    - ./logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+    marquez:
+      condition: service_started
+  networks:
+    - data_stack
+
+services:
+  # Base de données principale (Airflow + Data Warehouse)
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data_stack
+
+  # Serveur de lignée Marquez
+  marquez:
+    image: marquezproject/marquez:latest
+    environment:
+      MARQUEZ_CONFIG: postgresql://marquez:marquez@postgres-marquez/marquez
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    depends_on:
+      postgres-marquez:
+        condition: service_healthy
+    networks:
+      - data_stack
+
+  # Base de données dédiée à Marquez
+  postgres-marquez:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    volumes:
+      - marquez_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marquez"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data_stack
+
+  # Initialisation d'Airflow
+  airflow-init:
+    <<: *airflow-common
+    command: version
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _AIRFLOW_DB_MIGRATE: 'True'
+      _AIRFLOW_WWW_USER_CREATE: 'True'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+
+  # Orchestrateur Airflow - Webserver
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Orchestrateur Airflow - Scheduler
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+  # BI Dashboard Superset
+  superset:
+    image: apache/superset:latest
+    environment:
+      SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY}"
+      SUPERSET_HOME: /app/superset_home
+    ports:
+      - "8088:8088"
+    volumes:
+      - superset_home:/app/superset_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+      superset-init:
+        condition: service_completed_successfully
+    networks:
+      - data_stack
+    restart: always
+
+  # Initialisation de Superset
+  superset-init:
+    image: apache/superset:latest
+    command: >
+      bash -c "
+      superset fab create-admin --username admin --firstname Superset --lastname Admin --email admin@superset.com --password admin || true &&
+      superset db upgrade &&
+      superset init
+      "
+    environment:
+      SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY}"
+      SUPERSET_HOME: /app/superset_home
+    volumes:
+      - superset_home:/app/superset_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data_stack
+
+networks:
+  data_stack:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  marquez_data:
+  superset_home:

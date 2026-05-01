@@ -1,0 +1,7 @@
+.env
+logs/
+postgres_data/
+marquez_data/
+superset_home/
+*.pyc
+__pycache__/
