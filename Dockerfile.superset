@@ -1,6 +1,6 @@
 FROM apache/superset:latest
 
 USER root
-RUN apt-get update && apt-get install -y libpq-dev python3-dev
-RUN pip install psycopg2-binary
+# Install psycopg2 into the specific pip environment that Superset's virtualenv uses
+RUN pip install --target=/app/.venv/lib/python3.10/site-packages psycopg2-binary
 USER superset

@@ -1,16 +1,15 @@
-version: '3.8'
+version: "3.8"
 
-x-airflow-common:
-  &airflow-common
+x-airflow-common: &airflow-common
   build: .
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type": "http", "url": "http://marquez:5000", "endpoint": "api/v1/lineage"}'
-    AIRFLOW__OPENLINEAGE__NAMESPACE: 'my_data_stack'
+    AIRFLOW__OPENLINEAGE__NAMESPACE: "my_data_stack"
     AIRFLOW_CONN_DATA_WAREHOUSE: postgresql://airflow:airflow@postgres/warehouse
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'True'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
   user: "${AIRFLOW_UID:-50000}:0"
   volumes:
     - ./dags:/opt/airflow/dags
@@ -49,10 +48,11 @@ services:
   marquez:
     image: marquezproject/marquez:latest
     environment:
-      MARQUEZ_CONFIG: postgresql://marquez:marquez@postgres-marquez/marquez
+      JAVA_OPTS: "-Ddw.db.url=jdbc:postgresql://postgres-marquez:5432/marquez -Ddw.db.user=marquez -Ddw.db.password=marquez"
     ports:
       - "5000:5000"
       - "5001:5001"
+    command: ["server", "/usr/src/app/marquez.dev.yml"]
     depends_on:
       postgres-marquez:
         condition: service_healthy
@@ -83,8 +83,8 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      _AIRFLOW_DB_MIGRATE: 'True'
-      _AIRFLOW_WWW_USER_CREATE: 'True'
+      _AIRFLOW_DB_MIGRATE: "True"
+      _AIRFLOW_WWW_USER_CREATE: "True"
       _AIRFLOW_WWW_USER_USERNAME: airflow
       _AIRFLOW_WWW_USER_PASSWORD: airflow
 
@@ -115,7 +115,9 @@ services:
 
   # BI Dashboard Superset
   superset:
-    image: apache/superset:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
     environment:
       SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY}"
       SUPERSET_HOME: /app/superset_home
@@ -134,7 +136,9 @@ services:
 
   # Initialisation de Superset
   superset-init:
-    image: apache/superset:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
     command: >
       bash -c "
       superset fab create-admin --username admin --firstname Superset --lastname Admin --email admin@superset.com --password admin || true &&

@@ -1,7 +1,11 @@
 .env
+.env.example
 logs/
 postgres_data/
 marquez_data/
 superset_home/
 *.pyc
 __pycache__/
+.venv
+venv
+*.csv

@@ -26,11 +26,11 @@ Ce guide explique comment connecter Apache Superset à l'entrepôt de données P
 Les résultats de Great Expectations sont stockés au format JSON dans la colonne `value`. Pour faciliter la visualisation, il est recommandé de créer un **Virtual Dataset** via le **SQL Lab** avec la requête suivante :
 
 ```sql
-SELECT 
+SELECT
     key_name as suite_name,
-    CASE 
-        WHEN (value::json->'success')::text = 'true' THEN 'Succès' 
-        ELSE 'Échec' 
+    CASE
+        WHEN (value::json->'success')::text = 'true' THEN 'Succès'
+        ELSE 'Échec'
     END as status,
     (value::json->'statistics'->>'success_percent')::float as success_rate,
     (value::json->'run_id'->>'run_time')::timestamp as validation_time
@@ -39,9 +39,11 @@ FROM "ge_metadata.ge_validations_store"
 
 ## 4. Dépannage : Pilote Postgres manquant
 
-Si vous recevez l'erreur `Could not load database driver: PostgresEngineSpec`, exécutez la commande suivante sur votre machine hôte pour réinstaller le pilote dans l'environnement virtuel du container :
+Si vous recevez l'erreur `Could not load database driver: PostgresEngineSpec`, cela signifie que le conteneur n'a pas été construit avec le `Dockerfile.superset`. Par défaut, le `docker-compose.yml` est configuré pour utiliser la version buildée contenant le plugin.
+
+En cas de souci, vous pouvez forcer l'installation sur un conteneur qui tourne :
 
 ```bash
-docker exec -u root prjt_bi_hrimech-superset-1 pip install --target=/app/.venv/lib/python3.10/site-packages psycopg2-binary
-docker restart prjt_bi_hrimech-superset-1
+docker exec -u root enterprise-data-observability-platform-superset-1 pip install --target=/app/.venv/lib/python3.10/site-packages psycopg2-binary
+docker restart enterprise-data-observability-platform-superset-1
 ```
