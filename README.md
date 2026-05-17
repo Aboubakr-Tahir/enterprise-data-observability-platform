@@ -3,13 +3,16 @@
 ## 📌 Project Context
 
 ### The Problem
+
 A company's Data & Analytics department (DSI) manages a data warehouse that feeds critical business decisions (reporting, customer dashboards, ML models). Without automated quality controls, data issues propagate silently:
+
 - **Missing values** → incorrect KPIs
 - **Duplicate records** → inflated metrics
 - **Stale data** → outdated decisions
 - **Format violations** → broken downstream applications
 
 ### The Solution
+
 Build a **Data Observability framework** that continuously monitors data health, computes quality scores, traces data lineage, and provides real-time dashboards with alerts and basic self-healing capabilities.
 
 ---
@@ -26,20 +29,21 @@ Build a **Data Observability framework** that continuously monitors data health,
 
 ## 🧱 Technology Stack
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Orchestration | Apache Airflow | Schedule & coordinate data pipelines |
-| Data Transformation | dbt (Data Build Tool) | Transform raw data into analytics-ready models |
-| Data Quality | Great Expectations (GX) | Define & execute data quality expectations |
-| Lineage | OpenLineage + Marquez | Capture & visualize data lineage |
-| Visualization | Apache Superset | Dashboard + real-time alerts |
-| Metadata Storage | PostgreSQL | Store quality scores & lineage metadata |
-| Anomaly Detection | Python (scipy/pandas) | Statistical detection of quality drops |
-| Auto-remediation | Airflow branching | Simple corrective actions (reject batch, retry) |
+| Component           | Technology              | Purpose                                         |
+| ------------------- | ----------------------- | ----------------------------------------------- |
+| Orchestration       | Apache Airflow          | Schedule & coordinate data pipelines            |
+| Data Transformation | dbt (Data Build Tool)   | Transform raw data into analytics-ready models  |
+| Data Quality        | Great Expectations (GX) | Define & execute data quality expectations      |
+| Lineage             | OpenLineage + Marquez   | Capture & visualize data lineage                |
+| Visualization       | Apache Superset         | Dashboard + real-time alerts                    |
+| Metadata Storage    | PostgreSQL              | Store quality scores & lineage metadata         |
+| Anomaly Detection   | Python (scipy/pandas)   | Statistical detection of quality drops          |
+| Auto-remediation    | Airflow branching       | Simple corrective actions (reject batch, retry) |
 
 ---
 
 ## 🏗️ Architecture Overview
+
 ┌─────────────────────────────────────────────────────────────────┐
 │ DATA SOURCES │
 │ (PostgreSQL, Snowflake, BigQuery, S3, APIs...) │
@@ -78,27 +82,30 @@ Build a **Data Observability framework** that continuously monitors data health,
 │ - Freshness monitoring │
 └─────────────────────────────────────────────────────────────────┘
 
-
 ---
 
 ## 📊 Quality Checks Definition
 
 ### 1. Null Checks
+
 - **Expectation**: `expect_column_values_to_not_be_null`
 - **Example**: Customer email should never be NULL
 - **Threshold**: < 1% nulls for critical columns
 
 ### 2. Uniqueness Checks
+
 - **Expectation**: `expect_column_values_to_be_unique`
 - **Example**: Order ID must be unique
 - **Threshold**: 100% uniqueness for primary keys
 
 ### 3. Pattern Checks (Regex)
+
 - **Expectation**: `expect_column_values_to_match_regex`
 - **Example**: Email format → `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 - **Threshold**: > 99% compliance
 
 ### 4. Freshness Checks
+
 - **Expectation**: `expect_column_max_to_be_between`
 - **Example**: Last order date should be within last 24 hours
 - **Threshold**: Max date >= CURRENT_DATE - 1 day
@@ -108,6 +115,7 @@ Build a **Data Observability framework** that continuously monitors data health,
 ## 📈 Quality Score Formula
 
 **Example weights**:
+
 - Critical tables (Customer, Order): weight = 3
 - Important tables (Product, Inventory): weight = 2
 - Secondary tables (Logs, History): weight = 1
@@ -118,7 +126,7 @@ Build a **Data Observability framework** that continuously monitors data health,
 
 ### Method: Moving Average + Standard Deviation
 
-```python
+````python
 # 30-day rolling window
 rolling_mean = score_history.rolling(30).mean()
 rolling_std = score_history.rolling(30).std()
@@ -127,3 +135,27 @@ rolling_std = score_history.rolling(30).std()
 if current_score < rolling_mean - 2 * rolling_std:
     trigger_alert()
     trigger_remediation()
+
+---
+
+## Quick Start (consolidated docs)
+
+To start the whole platform (Airflow, Superset, Marquez, PostgreSQL) with one command:
+
+```bash
+docker compose up --build
+````
+
+Wait ~2–3 minutes for all services to become healthy. Key endpoints:
+
+- Airflow Web UI: http://localhost:8080
+- Superset UI: http://localhost:8088
+- Marquez API/UI: http://localhost:5000
+
+Minimal troubleshooting tips:
+
+- Check service status: `docker compose ps`
+- View logs: `docker compose logs -f <service>`
+- Rebuild if dependencies change: `docker compose build --no-cache`
+
+Notes: I consolidated the extra markdown files into this README to keep the repo tidy. If you need the detailed docs back, they are available in the Git history.
