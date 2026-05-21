@@ -9,3 +9,6 @@ __pycache__/
 .venv
 venv
 *.csv
+gcp-key.json
+dbt/profiles.yml
+dbt/.user.yml

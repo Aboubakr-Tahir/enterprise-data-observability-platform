@@ -10,11 +10,15 @@ x-airflow-common: &airflow-common
     AIRFLOW__OPENLINEAGE__NAMESPACE: "my_data_stack"
     AIRFLOW_CONN_DATA_WAREHOUSE: postgresql://airflow:airflow@postgres/warehouse
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
+    # For BigQuery / dbt inside Airflow containers
+    GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcp-key.json
+    DBT_PROFILES_DIR: /opt/airflow/dbt
   user: "${AIRFLOW_UID:-50000}:0"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./dbt:/opt/airflow/dbt
     - ./great_expectations:/opt/airflow/great_expectations
+    - ./gcp-key.json:/secrets/gcp-key.json:ro
     - ./logs:/opt/airflow/logs
   depends_on:
     postgres:

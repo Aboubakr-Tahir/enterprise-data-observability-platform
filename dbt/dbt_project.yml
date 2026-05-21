@@ -1,0 +1,17 @@
+name: "repo_dbt_project"
+version: "1.0.0"
+
+# Use the same profile name as the existing profile
+profile: "my_dbt_project"
+
+# Point dbt at the subdirectory that contains the actual project files
+model-paths: ["my_dbt_project/models"]
+analysis-paths: ["my_dbt_project/analyses"]
+test-paths: ["my_dbt_project/tests"]
+seed-paths: ["my_dbt_project/seeds"]
+macro-paths: ["my_dbt_project/macros"]
+snapshot-paths: ["my_dbt_project/snapshots"]
+
+clean-targets:
+  - "my_dbt_project/target"
+  - "my_dbt_project/dbt_packages"

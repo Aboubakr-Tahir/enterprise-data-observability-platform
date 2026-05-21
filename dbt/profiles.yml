@@ -1,12 +1,13 @@
 my_dbt_project:
-  target: dev
+  target: prod
   outputs:
-    dev:
-      type: postgres
-      host: postgres
-      user: airflow
-      password: airflow
-      port: 5432
-      dbname: warehouse
-      schema: analytics
-      threads: 1
+    prod:
+      type: bigquery
+      method: service-account
+      project: gen-lang-client-0635762262
+      dataset: analytics
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      priority: interactive
+      keyfile: /secrets/gcp-key.json

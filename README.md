@@ -159,3 +159,30 @@ Minimal troubleshooting tips:
 - Rebuild if dependencies change: `docker compose build --no-cache`
 
 Notes: I consolidated the extra markdown files into this README to keep the repo tidy. If you need the detailed docs back, they are available in the Git history.
+
+## BigQuery (dbt) setup
+
+If you want dbt to run against BigQuery from inside the Airflow containers, add your GCP service account JSON to the repo root as `gcp-key.json` (keep it out of version control).
+
+- The Compose setup mounts `./dbt` into `/opt/airflow/dbt` and the service account into `/secrets/gcp-key.json`.
+- `requirements.txt` includes `dbt-core`, `dbt-postgres` and `dbt-bigquery` so the adapter will be installed when images are built.
+- The `dbt` profile in `dbt/profiles.yml` is preconfigured to use `/secrets/gcp-key.json`.
+
+Steps to run (after placing `gcp-key.json` in repo root):
+
+```bash
+docker compose up --build -d
+# wait for services to become healthy (2-3 minutes)
+
+# run a dbt debug inside the Airflow webserver container
+docker compose exec airflow-webserver dbt debug --project-dir /opt/airflow/dbt --profiles-dir /opt/airflow/dbt
+```
+
+If you prefer not to mount a keyfile, set `GOOGLE_APPLICATION_CREDENTIALS` in your environment and update `dbt/profiles.yml` accordingly.
+
+If you run into adapter errors (e.g. "Could not find adapter type bigquery"), rebuild the images to ensure `requirements.txt` changes are applied:
+
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
