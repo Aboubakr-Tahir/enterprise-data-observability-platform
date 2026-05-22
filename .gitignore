@@ -12,3 +12,7 @@ venv
 gcp-key.json
 dbt/profiles.yml
 dbt/.user.yml
+mlruns/
+*.db
+*.pkl
+*.keras

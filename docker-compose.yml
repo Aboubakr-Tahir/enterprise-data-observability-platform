@@ -160,6 +160,22 @@ services:
     networks:
       - data_stack
 
+  # MLflow Tracking Server
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.3
+    ports:
+      - "5050:5050"
+    volumes:
+      - ${PWD}/mlruns:${PWD}/mlruns
+    # Use SQLite as the backend store and point both container and host to the
+    # same absolute path so local clients and the container share the artifact store.
+    command: >-
+      mlflow server --host 0.0.0.0 --port 5050
+      --backend-store-uri sqlite:////${PWD}/mlruns/mlflow.db
+      --default-artifact-root file://${PWD}/mlruns
+    networks:
+      - data_stack
+
 networks:
   data_stack:
     driver: bridge

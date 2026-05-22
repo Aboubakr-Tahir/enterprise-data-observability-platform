@@ -1,0 +1,12 @@
+# MLOps dependencies — install locally for model training & prediction
+# Do NOT add to main Docker image (too heavy)
+#
+# Install with:
+#   pip install -r mlops/requirements-mlops.txt
+#
+
+mlflow==2.11.3
+tensorflow==2.17.1
+scikit-learn==1.5.1
+pandas>=1.1.3
+numpy>=1.21.0
