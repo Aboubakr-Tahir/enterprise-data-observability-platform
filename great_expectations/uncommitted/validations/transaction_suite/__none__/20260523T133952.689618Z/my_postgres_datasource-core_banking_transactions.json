@@ -1,0 +1,218 @@
+{
+  "id": null,
+  "meta": {
+    "active_batch_definition": {
+      "batch_identifiers": {},
+      "data_asset_name": "core_banking_transactions",
+      "data_connector_name": "fluent",
+      "datasource_name": "my_postgres_datasource"
+    },
+    "batch_markers": {
+      "ge_load_time": "20260523T133952.700524Z"
+    },
+    "batch_parameters": null,
+    "batch_spec": {
+      "batch_identifiers": {},
+      "data_asset_name": "core_banking_transactions",
+      "schema_name": "core_banking",
+      "table_name": "transactions",
+      "type": "table"
+    },
+    "checkpoint_id": "c419a3b8-6bf6-4543-bc22-81942b4344a1",
+    "great_expectations_version": "1.17.2",
+    "run_id": {
+      "run_name": null,
+      "run_time": "2026-05-23T13:39:52.689618+00:00"
+    },
+    "validation_id": "4e944177-7d44-4008-a4a8-ee34d688bc73",
+    "validation_time": "2026-05-23T13:39:52.689618+00:00"
+  },
+  "results": [
+    {
+      "exception_info": {
+        "exception_message": null,
+        "exception_traceback": null,
+        "raised_exception": false
+      },
+      "expectation_config": {
+        "id": "a1ed3214-794f-45c1-ac29-97a031228780",
+        "kwargs": {
+          "batch_id": "my_postgres_datasource-core_banking_transactions",
+          "column": "transaction_id"
+        },
+        "meta": {},
+        "severity": "critical",
+        "type": "expect_column_values_to_not_be_null"
+      },
+      "meta": {},
+      "result": {
+        "element_count": 275,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_list": [],
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0
+      },
+      "success": true
+    },
+    {
+      "exception_info": {
+        "exception_message": null,
+        "exception_traceback": null,
+        "raised_exception": false
+      },
+      "expectation_config": {
+        "id": "e58e747f-5210-45a8-a73c-8fa62c15ec5d",
+        "kwargs": {
+          "batch_id": "my_postgres_datasource-core_banking_transactions",
+          "column": "transaction_id"
+        },
+        "meta": {},
+        "severity": "critical",
+        "type": "expect_column_values_to_be_unique"
+      },
+      "meta": {},
+      "result": {
+        "element_count": 275,
+        "missing_count": 0,
+        "missing_percent": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_list": [],
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "unexpected_percent_total": 0.0
+      },
+      "success": true
+    },
+    {
+      "exception_info": {
+        "exception_message": null,
+        "exception_traceback": null,
+        "raised_exception": false
+      },
+      "expectation_config": {
+        "id": "ea1af8b5-5d4a-48e3-a8ad-637eccdaad49",
+        "kwargs": {
+          "batch_id": "my_postgres_datasource-core_banking_transactions",
+          "column": "transaction_amount"
+        },
+        "meta": {},
+        "severity": "critical",
+        "type": "expect_column_values_to_not_be_null"
+      },
+      "meta": {},
+      "result": {
+        "element_count": 275,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_list": [],
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0
+      },
+      "success": true
+    },
+    {
+      "exception_info": {
+        "exception_message": null,
+        "exception_traceback": null,
+        "raised_exception": false
+      },
+      "expectation_config": {
+        "id": "d3e0394a-8efa-47ef-8203-dd31b9d29e91",
+        "kwargs": {
+          "batch_id": "my_postgres_datasource-core_banking_transactions",
+          "column": "transaction_amount",
+          "min_value": 0.0,
+          "strict_min": true
+        },
+        "meta": {},
+        "severity": "critical",
+        "type": "expect_column_values_to_be_between"
+      },
+      "meta": {},
+      "result": {
+        "element_count": 275,
+        "missing_count": 0,
+        "missing_percent": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_list": [],
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "unexpected_percent_total": 0.0
+      },
+      "success": true
+    },
+    {
+      "exception_info": {
+        "exception_message": null,
+        "exception_traceback": null,
+        "raised_exception": false
+      },
+      "expectation_config": {
+        "id": "579ecd23-2803-4338-af26-8e63e2184c72",
+        "kwargs": {
+          "batch_id": "my_postgres_datasource-core_banking_transactions",
+          "column": "account_balance"
+        },
+        "meta": {},
+        "severity": "critical",
+        "type": "expect_column_values_to_not_be_null"
+      },
+      "meta": {},
+      "result": {
+        "element_count": 275,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_list": [],
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0
+      },
+      "success": true
+    },
+    {
+      "exception_info": {
+        "exception_message": null,
+        "exception_traceback": null,
+        "raised_exception": false
+      },
+      "expectation_config": {
+        "id": "6b4a8b02-b291-44ea-9a48-e16286fe3942",
+        "kwargs": {
+          "batch_id": "my_postgres_datasource-core_banking_transactions",
+          "column": "channel",
+          "value_set": [
+            "ATM",
+            "Mobile",
+            "Online",
+            "Branch",
+            "POS"
+          ]
+        },
+        "meta": {},
+        "severity": "critical",
+        "type": "expect_column_values_to_be_in_set"
+      },
+      "meta": {},
+      "result": {
+        "element_count": 275,
+        "missing_count": 0,
+        "missing_percent": 0.0,
+        "partial_unexpected_counts": [],
+        "partial_unexpected_list": [],
+        "unexpected_count": 0,
+        "unexpected_percent": 0.0,
+        "unexpected_percent_nonmissing": 0.0,
+        "unexpected_percent_total": 0.0
+      },
+      "success": true
+    }
+  ],
+  "statistics": {
+    "evaluated_expectations": 6,
+    "success_percent": 100.0,
+    "successful_expectations": 6,
+    "unsuccessful_expectations": 0
+  },
+  "success": true,
+  "suite_name": "transaction_suite",
+  "suite_parameters": {}
+}
