@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "49f5240f-b7a5-42f0-a5a6-8b40af2c23b6",
+      "name": "core_banking_transactions"
+    },
+    "batch_definition": {
+      "id": "94ef4678-56a3-4142-8fe7-965a2969849c",
+      "name": "whole_table"
+    },
+    "datasource": {
+      "id": "46acb554-986c-48e9-b7c6-df33e1da1718",
+      "name": "my_postgres_datasource"
+    }
+  },
+  "id": "4e944177-7d44-4008-a4a8-ee34d688bc73",
+  "name": "transaction_validation_definition",
+  "suite": {
+    "id": "7c419251-16a1-4745-9145-eef8f86a5539",
+    "name": "transaction_suite"
+  }
+}

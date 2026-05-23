@@ -1,4 +1,3 @@
-
 # Welcome to Great Expectations! Always know what to expect from your data.
 #
 # Here you can define datasources, batch kwargs generators, integrations and
@@ -9,25 +8,10 @@
 
 # config_version refers to the syntactic version of this config file, and is used in maintaining backwards compatibility
 # It is auto-generated and usually does not need to be changed.
-config_version: 3
+config_version: 3.0
 
 # Datasources tell Great Expectations where your data lives and how to get it.
 # Read more at https://docs.greatexpectations.io/docs/guides/connecting_to_your_data/connect_to_data_overview
-datasources:
-  my_postgres_datasource:
-    class_name: Datasource
-    execution_engine:
-      class_name: SqlAlchemyExecutionEngine
-      connection_string: postgresql+psycopg2://airflow:airflow@postgres:5432/warehouse
-    data_connectors:
-      default_runtime_data_connector_name:
-        class_name: RuntimeDataConnector
-        batch_identifiers:
-          - default_identifier_name
-      default_inferred_data_connector_name:
-        class_name: InferredAssetSqlDataConnector
-        include_schema_name: true
-
 
 # This config file supports variable substitution which enables: 1) keeping
 # secrets out of source control & 2) environment-based configuration changes
@@ -46,7 +30,6 @@ datasources:
 #
 # https://docs.greatexpectations.io/docs/guides/setup/configuring_data_contexts/how_to_configure_credentials
 
-
 config_variables_file_path: uncommitted/config_variables.yml
 
 # The plugins_directory will be added to your python path for custom modules
@@ -54,13 +37,13 @@ config_variables_file_path: uncommitted/config_variables.yml
 plugins_directory: plugins/
 
 stores:
-# Stores are configurable places to store things like Expectations, Validations
-# Data Docs, and more. These are for advanced users only - most users can simply
-# leave this section alone.
-#
-# Three stores are required: expectations, validations, and
-# evaluation_parameters, and must exist with a valid store entry. Additional
-# stores can be configured for uses such as data_docs, etc.
+  # Stores are configurable places to store things like Expectations, Validations
+  # Data Docs, and more. These are for advanced users only - most users can simply
+  # leave this section alone.
+  #
+  # Three stores are required: expectations, validations, and
+  # evaluation_parameters, and must exist with a valid store entry. Additional
+  # stores can be configured for uses such as data_docs, etc.
   expectations_store:
     class_name: ExpectationsStore
     store_backend:
@@ -68,16 +51,12 @@ stores:
       base_directory: expectations/
 
   validations_store:
-    class_name: ValidationsStore
+    class_name: ValidationResultsStore
     store_backend:
-      class_name: DatabaseStoreBackend
-      connection_string: postgresql+psycopg2://airflow:airflow@postgres:5432/warehouse
-      table_name: ge_metadata.ge_validations_store
-
-  evaluation_parameter_store:
-    # Evaluation Parameters enable dynamic expectations. Read more here:
-    # https://docs.greatexpectations.io/docs/reference/evaluation_parameters/
-    class_name: EvaluationParameterStore
+      # Use a filesystem-backed validations store for local/CI runs to avoid
+      # requiring the ge_metadata DB/schema to exist during DataContext load.
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/validations/
 
   checkpoint_store:
     class_name: CheckpointStore
@@ -86,16 +65,15 @@ stores:
       suppress_store_backend_id: true
       base_directory: checkpoints/
 
-  profiler_store:
-    class_name: ProfilerStore
+  validation_definition_store:
+    class_name: ValidationDefinitionStore
     store_backend:
       class_name: TupleFilesystemStoreBackend
-      suppress_store_backend_id: true
-      base_directory: profilers/
+      base_directory: uncommitted/validation_definitions/
 
+  # profiler_store removed for compatibility with this GX version
 expectations_store_name: expectations_store
-validations_store_name: validations_store
-evaluation_parameter_store_name: evaluation_parameter_store
+validation_results_store_name: validations_store
 checkpoint_store_name: checkpoint_store
 
 data_docs_sites:
@@ -105,13 +83,28 @@ data_docs_sites:
   # profiles from the uncommitted directory. Read more at https://docs.greatexpectations.io/docs/terms/data_docs
   local_site:
     class_name: SiteBuilder
-    # set to false to hide how-to buttons in Data Docs
     show_how_to_buttons: true
     store_backend:
-        class_name: TupleFilesystemStoreBackend
-        base_directory: uncommitted/data_docs/local_site/
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/data_docs/local_site/
     site_index_builder:
-        class_name: DefaultSiteIndexBuilder
+      class_name: DefaultSiteIndexBuilder
 
-anonymous_usage_statistics:
-  enabled: False
+analytics_enabled: false
+fluent_datasources:
+  my_postgres_datasource:
+    type: sql
+    id: 46acb554-986c-48e9-b7c6-df33e1da1718
+    assets:
+      core_banking_transactions:
+        type: table
+        id: 49f5240f-b7a5-42f0-a5a6-8b40af2c23b6
+        batch_metadata: {}
+        batch_definitions:
+          whole_table:
+            id: 94ef4678-56a3-4142-8fe7-965a2969849c
+            partitioner:
+        table_name: transactions
+        schema_name: core_banking
+    connection_string: ${GX_DB_CONN}
+data_context_id: 9db11ea5-264e-4ead-81b9-c07e69c90e8b

@@ -1,0 +1,12 @@
+{
+  "actions": [],
+  "id": "c419a3b8-6bf6-4543-bc22-81942b4344a1",
+  "name": "sample_checkpoint",
+  "result_format": "SUMMARY",
+  "validation_definitions": [
+    {
+      "id": "4e944177-7d44-4008-a4a8-ee34d688bc73",
+      "name": "transaction_validation_definition"
+    }
+  ]
+}

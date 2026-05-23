@@ -150,13 +150,23 @@ Wait ~2–3 minutes for all services to become healthy. Key endpoints:
 
 - Airflow Web UI: http://localhost:8080
 - Superset UI: http://localhost:8088
-- Marquez API/UI: http://localhost:5000
+- Marquez API: http://localhost:5000
+- Marquez UI: http://localhost:3001
 
 Minimal troubleshooting tips:
 
 - Check service status: `docker compose ps`
 - View logs: `docker compose logs -f <service>`
 - Rebuild if dependencies change: `docker compose build --no-cache`
+
+### Recent Platform Updates (May 2026)
+
+- **Airflow Environment Upgrade**: Updated the Airflow base image to Python 3.10 to fix compatibility issues with Great Expectations 1.17.2 and MLflow.
+- **Dependencies & Mounting**: Added `Faker==25.8.0` to Airflow's `requirements.txt` and mounted `./database` to `/opt/airflow/database` in `docker-compose.yml` to allow Airflow tasks to generate synthetic validation data.
+- **OpenLineage & Marquez Integration**:
+  - Configured `AIRFLOW__OPENLINEAGE__TRANSPORT` and `AIRFLOW__OPENLINEAGE__NAMESPACE` inside `docker-compose.yml`.
+  - Upgraded `gx_validation_dag.py` to declare `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage to the `core_banking.transactions` table explicitly.
+  - Added the `marquez-web` service to `docker-compose.yml` to expose the Marquez Lineage UI at port `3000`.
 
 Notes: I consolidated the extra markdown files into this README to keep the repo tidy. If you need the detailed docs back, they are available in the Git history.
 

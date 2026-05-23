@@ -1,0 +1,73 @@
+{
+  "expectations": [
+    {
+      "id": "a1ed3214-794f-45c1-ac29-97a031228780",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "id": "e58e747f-5210-45a8-a73c-8fa62c15ec5d",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_be_unique"
+    },
+    {
+      "id": "ea1af8b5-5d4a-48e3-a8ad-637eccdaad49",
+      "kwargs": {
+        "column": "transaction_amount"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "id": "d3e0394a-8efa-47ef-8203-dd31b9d29e91",
+      "kwargs": {
+        "column": "transaction_amount",
+        "min_value": 0.0,
+        "strict_min": true
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_be_between"
+    },
+    {
+      "id": "579ecd23-2803-4338-af26-8e63e2184c72",
+      "kwargs": {
+        "column": "account_balance"
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "id": "6b4a8b02-b291-44ea-9a48-e16286fe3942",
+      "kwargs": {
+        "column": "channel",
+        "value_set": [
+          "ATM",
+          "Mobile",
+          "Online",
+          "Branch",
+          "POS"
+        ]
+      },
+      "meta": {},
+      "severity": "critical",
+      "type": "expect_column_values_to_be_in_set"
+    }
+  ],
+  "id": "7c419251-16a1-4745-9145-eef8f86a5539",
+  "meta": {
+    "great_expectations_version": "1.17.2"
+  },
+  "name": "transaction_suite",
+  "notes": null
+}

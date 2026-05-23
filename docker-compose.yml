@@ -9,6 +9,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type": "http", "url": "http://marquez:5000", "endpoint": "api/v1/lineage"}'
     AIRFLOW__OPENLINEAGE__NAMESPACE: "my_data_stack"
     AIRFLOW_CONN_DATA_WAREHOUSE: postgresql://airflow:airflow@postgres/warehouse
+    GX_DB_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
     # For BigQuery / dbt inside Airflow containers
     GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcp-key.json
@@ -16,6 +17,7 @@ x-airflow-common: &airflow-common
   user: "${AIRFLOW_UID:-50000}:0"
   volumes:
     - ./dags:/opt/airflow/dags
+    - ./database:/opt/airflow/database
     - ./dbt:/opt/airflow/dbt
     - ./great_expectations:/opt/airflow/great_expectations
     - ./gcp-key.json:/secrets/gcp-key.json:ro
@@ -77,6 +79,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - data_stack
+
+  # Interface Graphique (UI) Marquez
+  marquez-web:
+    image: marquezproject/marquez-web:latest
+    environment:
+      - MARQUEZ_URL=http://localhost:5000
+      - MARQUEZ_HOST=marquez
+      - MARQUEZ_PORT=5000
+      - WEB_PORT=3000
+    ports:
+      - "3001:3000"
+    depends_on:
+      - marquez
     networks:
       - data_stack
 
