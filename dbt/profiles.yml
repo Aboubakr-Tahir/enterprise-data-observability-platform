@@ -1,6 +1,18 @@
 my_dbt_project:
-  target: prod
+  target: dev
   outputs:
+    # Local development target – uses the repo-root keyfile
+    dev:
+      type: bigquery
+      method: service-account
+      project: gen-lang-client-0635762262
+      dataset: analytics
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      priority: interactive
+      keyfile: /home/aboubakr/Desktop/enterprise-data-observability-platform/gcp-key.json
+    # Docker / Airflow target – uses the mounted secret path
     prod:
       type: bigquery
       method: service-account
