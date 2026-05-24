@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: ml_results
+    database: gen-lang-client-0635762262 # Ton projet GCP
+    schema: silver
+    tables:
+      - name: silver_scored_transactions

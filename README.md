@@ -188,6 +188,9 @@ Minimal troubleshooting tips:
   - **Schema integrity**: `transaction_id` remains present and unique.
   - **Boundary checks**: `anomaly_score` is strictly between `0` and `1`.
   - **Format checks**: `anomaly_score` does not contain NaN/nulls, and `is_anomaly` is strictly `0` or `1`.
+- **dbt Gold Layer (Business & Quarantine)**:
+  - Created two final BigQuery views in the `gold` dataset: `gold_fact_transactions` (clean business reporting) and `gold_quarantine_transactions` (alerts and security).
+  - Used BigQuery `JOIN` operations inside dbt models to fetch original features from `silver_enriched_transactions` using the `transaction_id`, keeping the ML prediction python script highly optimized and lightweight.
 - **OpenLineage & Marquez Integration**:
   - Configured `AIRFLOW__OPENLINEAGE__TRANSPORT` and `AIRFLOW__OPENLINEAGE__NAMESPACE` inside `docker-compose.yml`.
   - Declared `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage across the full pipeline.

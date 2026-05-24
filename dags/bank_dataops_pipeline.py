@@ -66,6 +66,16 @@ bigquery_scored_ds = Dataset(
     name="gen-lang-client-0635762262.silver.silver_scored_transactions",
 )
 
+bigquery_gold_fact_ds = Dataset(
+    namespace="bigquery",
+    name="gen-lang-client-0635762262.gold.gold_fact_transactions",
+)
+
+bigquery_gold_quarantine_ds = Dataset(
+    namespace="bigquery",
+    name="gen-lang-client-0635762262.gold.gold_quarantine_transactions",
+)
+
 
 # ---------------------------------------------------------------------------
 # Python callable — Great Expectations checkpoint
@@ -212,6 +222,19 @@ with DAG(
         outlets=[bigquery_scored_ds],
     )
 
+    # Task 9 — dbt Gold: materialize final business and quarantine data products
+    run_dbt_gold = BashOperator(
+        task_id="run_dbt_gold_layer",
+        bash_command=(
+            "dbt run --select gold "
+            f"--project-dir {REPO_ROOT}/dbt "
+            f"--profiles-dir {REPO_ROOT}/dbt "
+            "--target prod"
+        ),
+        inlets=[bigquery_scored_ds, bigquery_silver_ds],
+        outlets=[bigquery_gold_fact_ds, bigquery_gold_quarantine_ds],
+    )
+
     # Linear dependency chain — if any task fails, downstream stops
     (
         generate_faker_data
@@ -222,4 +245,5 @@ with DAG(
         >> run_dbt_test
         >> run_ml_prediction
         >> validate_ml_output_with_gx
+        >> run_dbt_gold
     )

@@ -1,0 +1,21 @@
+
+
+/*
+    Flux de Quarantaine :
+    Isole uniquement les transactions signalées par l'Ensemble ML pour investigation.
+*/
+
+SELECT 
+    s.transaction_id,
+    s.account_id,
+    t.transaction_amount,
+    s.transaction_date,
+    s.anomaly_score,
+    s.threshold_used,
+    s.ip_address,
+    s.device_id
+FROM `gen-lang-client-0635762262`.`silver`.`silver_scored_transactions` s
+JOIN `gen-lang-client-0635762262`.`silver`.`silver_enriched_transactions` t
+  ON s.transaction_id = t.transaction_id
+WHERE s.is_anomaly = 1
+
