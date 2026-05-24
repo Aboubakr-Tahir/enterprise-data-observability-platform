@@ -61,6 +61,11 @@ bigquery_silver_ds = Dataset(
     name="gen-lang-client-0635762262.silver.silver_enriched_transactions",
 )
 
+bigquery_scored_ds = Dataset(
+    namespace="bigquery",
+    name="gen-lang-client-0635762262.silver.silver_scored_transactions",
+)
+
 
 # ---------------------------------------------------------------------------
 # Python callable — Great Expectations checkpoint
@@ -193,6 +198,18 @@ with DAG(
             "python /opt/airflow/mlops/predict.py"
         ),
         inlets=[bigquery_silver_ds],
+        outlets=[bigquery_scored_ds],
+    )
+
+    # Task 8 — Great Expectations ML Output Validation
+    # Runs natively inside the Airflow Docker container, validating format, bounds, and identity schemas
+    validate_ml_output_with_gx = BashOperator(
+        task_id="validate_ml_output_with_gx",
+        bash_command=(
+            "python /opt/airflow/mlops/validate_ml_output.py"
+        ),
+        inlets=[bigquery_scored_ds],
+        outlets=[bigquery_scored_ds],
     )
 
     # Linear dependency chain — if any task fails, downstream stops
@@ -204,4 +221,5 @@ with DAG(
         >> run_dbt_silver
         >> run_dbt_test
         >> run_ml_prediction
+        >> validate_ml_output_with_gx
     )

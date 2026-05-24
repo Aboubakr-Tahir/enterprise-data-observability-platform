@@ -28,6 +28,10 @@
   - **Dynamic Environment Detection**: Modified `predict.py` and `train.py` to dynamically switch the MLflow tracking URI (`http://mlflow:5050` in Docker vs. `http://localhost:5050` on host) and Google Credentials (`/secrets/gcp-key.json` inside container vs. local fallback).
   - **Keras Serialization Version Alignment**: Aligned Keras versions between training and inference by running `train.py` inside the container using the container's native `Keras 3.12.2` package. This resolves all serialization model deserialization errors (`quantization_config` Dense layer errors) while ensuring host Keras (`3.14.1`) remains backward-compatible to inspect the models locally.
   - **BigQuery Closed-Loop Storage**: Configured `predict.py` to upload the final scored transactions (`anomaly_score` and `is_anomaly`) directly back to BigQuery as `silver.silver_scored_transactions` using an idempotent `WRITE_TRUNCATE` load job, completing the missing link for final Superset BI reporting.
+- **Great Expectations ML Output Validation**:
+  - **Script**: Created a highly reliable validation script `mlops/validate_ml_output.py` that utilizes the modern Great Expectations `1.17.2` fluent API with ephemeral context (`gx.get_context(mode='ephemeral')`) to validate ML scoring outputs directly from BigQuery.
+  - **Expectations**: Checks that `transaction_id` is unique and non-null (schema validation), that `anomaly_score` is strictly between `0` and `1` (boundary validation) and non-null (format validation), and that `is_anomaly` is strictly in `{0, 1}`.
+  - **Task**: Added the task `validate_ml_output_with_gx` as the final quality gate at the end of the `bank_dataops_pipeline` Airflow DAG.
 - **Dependency Fix Applied**: Updated `requirements.txt` to include Airflow ML dependencies. Updated `mlops/requirements-mlops.txt` with `google-cloud-bigquery`, `pandas-gbq`, `joblib`.
 - **dbt Local Execution Fixed**: Installed `dbt-bigquery==1.11.1` in the local `.venv`. Added a `dev` target in `dbt/profiles.yml` pointing to the repo-root `gcp-key.json` for local runs, keeping `prod` target for Docker.
 

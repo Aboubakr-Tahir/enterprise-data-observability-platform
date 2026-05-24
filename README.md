@@ -184,6 +184,10 @@ Minimal troubleshooting tips:
   - **Dynamic Environment Detection**: Modified `predict.py` and `train.py` to dynamically switch the MLflow tracking URI (`http://mlflow:5050` in Docker vs. `http://localhost:5050` on host) and BQ Credentials (`/secrets/gcp-key.json` inside container vs. local fallback).
   - **Keras Serialization Version Alignment**: Aligned Keras versions between training and inference by running `train.py` inside the container using the container's native `Keras 3.12.2` package. This resolves all serialization model deserialization errors (`quantization_config` Dense layer errors) while ensuring host Keras (`3.14.1`) remains backward-compatible to inspect the models locally.
   - **BigQuery Closed-Loop Storage**: Configured `predict.py` to upload the final scored transactions (`anomaly_score` and `is_anomaly`) directly back to BigQuery as `silver.silver_scored_transactions` using an idempotent `WRITE_TRUNCATE` load job, completing the missing link for final Superset BI reporting.
+- **Great Expectations ML Output Validation**: Created a specialized script (`mlops/validate_ml_output.py`) using the modern GX 1.17.2 fluent API to validate our ML anomaly scores directly in BigQuery. The task `validate_ml_output_with_gx` acts as a quality gate right after the prediction phase, verifying:
+  - **Schema integrity**: `transaction_id` remains present and unique.
+  - **Boundary checks**: `anomaly_score` is strictly between `0` and `1`.
+  - **Format checks**: `anomaly_score` does not contain NaN/nulls, and `is_anomaly` is strictly `0` or `1`.
 - **OpenLineage & Marquez Integration**:
   - Configured `AIRFLOW__OPENLINEAGE__TRANSPORT` and `AIRFLOW__OPENLINEAGE__NAMESPACE` inside `docker-compose.yml`.
   - Declared `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage across the full pipeline.
