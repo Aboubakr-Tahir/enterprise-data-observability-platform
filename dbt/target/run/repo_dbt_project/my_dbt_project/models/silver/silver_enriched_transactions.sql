@@ -18,6 +18,10 @@
     Text columns (transaction_type, location, channel, customer_occupation)
     are passed through RAW — encoding is handled by predict.py at inference time.
 
+    Materialization: TABLE (full rebuild each run).
+    Bronze is full-refreshed (WRITE_TRUNCATE) each run, so Silver must
+    also rebuild to stay consistent with the full upstream source.
+
     Velocity features mirror the pandas rolling logic from the training notebook:
       - account_tx_count_24h  : # transactions per account in the preceding 24 hours
       - account_avg_amount_7d : avg transaction amount per account over 7 preceding days
@@ -52,6 +56,7 @@ WITH base AS (
     FROM `gen-lang-client-0635762262`.`analytics`.`stg_transactions` AS t
     LEFT JOIN `gen-lang-client-0635762262`.`analytics`.`stg_accounts` AS a
         ON t.account_id = a.account_id
+
 ),
 
 -- Velocity: count of transactions per account in the preceding 24 hours
