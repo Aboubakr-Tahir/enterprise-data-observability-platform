@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import json
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
@@ -8,26 +9,25 @@ from tensorflow.keras import layers, models
 import mlflow
 import mlflow.sklearn
 import mlflow.keras
+import joblib
 import warnings
 warnings.filterwarnings('ignore')
 
-# 1. Configuration de MLflow
+# ---------------------------------------------------------------------------
+# MLflow Configuration
+# ---------------------------------------------------------------------------
 mlflow.set_tracking_uri("http://localhost:5050")
-# Ensure the experiment uses the mounted artifact root inside the mlflow container
 from mlflow.tracking import MlflowClient
 import time
 client = MlflowClient()
 _base_exp_name = "Bank_Fraud_Anomaly_Detection"
-# Use the repository absolute path so host and container refer to the same location
 _artifact_root = f"file://{os.path.join(os.getcwd(), 'mlruns')}"
 
 try:
     existing_exp = client.get_experiment_by_name(_base_exp_name)
-    
-    # Check if experiment exists and is deleted
+
     if existing_exp is not None and existing_exp.lifecycle_stage == 'deleted':
         print(f"Restoring deleted experiment: {_base_exp_name}")
-        # Restore the deleted experiment
         client.restore_experiment(existing_exp.experiment_id)
         mlflow.set_experiment(_base_exp_name)
     elif existing_exp is None:
@@ -35,9 +35,7 @@ try:
         client.create_experiment(_base_exp_name, artifact_location=_artifact_root)
         mlflow.set_experiment(_base_exp_name)
     else:
-        # Experiment exists and is active
         if existing_exp.artifact_location.startswith("file:///app") or existing_exp.artifact_location.startswith("/app"):
-            # Old non-writable path; create a new experiment with timestamp suffix
             _new_name = f"{_base_exp_name}_migrated_{int(time.time())}"
             client.create_experiment(_new_name, artifact_location=_artifact_root)
             mlflow.set_experiment(_new_name)
@@ -50,8 +48,8 @@ except Exception as e:
         client.create_experiment(_new_name, artifact_location=_artifact_root)
         mlflow.set_experiment(_new_name)
     except:
-        # Last resort: use a simple default
         mlflow.set_experiment(_base_exp_name)
+
 
 def build_autoencoder(input_dim):
     """Définition de l'architecture Sablier de l'Autoencoder (MLP)"""
@@ -61,7 +59,7 @@ def build_autoencoder(input_dim):
         layers.Dense(32, activation='relu'),
         layers.Dense(16, activation='relu'),
         layers.Dense(8, activation='relu'),  # Espace latent (Compression)
-        
+
         # Decoder
         layers.Dense(16, activation='relu'),
         layers.Dense(32, activation='relu'),
@@ -70,15 +68,16 @@ def build_autoencoder(input_dim):
     model.compile(optimizer='adam', loss='mse')
     return model
 
+
 def main():
     # 2. Lecture du dataset de Features créé par le script précédent
     data_path = '/home/aboubakr/Desktop/enterprise-data-observability-platform/csv_denormalisation/ml_ready_transactions.csv'
-    
+
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Le fichier {data_path} est introuvable. Exécute d'abord le préprocessing.")
-        
+
     df = pd.read_csv(data_path, index_col='TransactionID')
-    
+
     X = df.values  # Matrice numérique pure pour l'IA
     input_dim = X.shape[1]
 
@@ -88,44 +87,41 @@ def main():
         # Hyperparamètres de l'Isolation Forest
         if_contamination = 0.01  # On estime à priori 1% d'anomalies globales
         if_estimators = 100
-        
+
         mlflow.log_param("if_contamination", if_contamination)
         mlflow.log_param("if_n_estimators", if_estimators)
-        
+
         iso_forest = IsolationForest(n_estimators=if_estimators, contamination=if_contamination, random_state=42)
         iso_forest.fit(X)
-        
+
         # Calcul du score d'anomalie de l'IF (on le normalise pour qu'un score haut = anomalie)
-        # decision_function renvoie des valeurs négatives pour les anomalies, on inverse.
         if_scores = -iso_forest.decision_function(X)
         if_scores_norm = (if_scores - if_scores.min()) / (if_scores.max() - if_scores.min() + 1e-6)
 
         print("Entraînement de l'Autoencoder (Réseau de Neurones)...")
-        # Hyperparamètres de l'Autoencoder
         ae_epochs = 20
         ae_batch_size = 64
-        
+
         mlflow.log_param("ae_epochs", ae_epochs)
         mlflow.log_param("ae_batch_size", ae_batch_size)
-        
+
         autoencoder = build_autoencoder(input_dim)
         autoencoder.fit(
-            X, X,  # L'Autoencoder apprend à reconstruire sa propre entrée (X)
+            X, X,
             epochs=ae_epochs,
             batch_size=ae_batch_size,
             shuffle=True,
             verbose=0
         )
-        
+
         # Calcul de l'erreur de reconstruction (MSE) pour chaque ligne
         X_pred = autoencoder.predict(X, verbose=0)
         ae_mse = np.mean(np.power(X - X_pred, 2), axis=1)
         ae_scores_norm = (ae_mse - ae_mse.min()) / (ae_mse.max() - ae_mse.min() + 1e-6)
 
         print("Calcul de la fusion des scores d'ensemble...")
-        # Équation d'ensemble pondérée (50% IF / 50% Autoencoder)
         final_scores = (0.5 * if_scores_norm) + (0.5 * ae_scores_norm)
-        
+
         # Définition métier du seuil critique (99ème percentile du dataset propre)
         threshold_99 = np.percentile(final_scores, 99)
         mlflow.log_metric("anomaly_threshold_99th_percentile", threshold_99)
@@ -135,12 +131,40 @@ def main():
         print("Logging des artefacts dans MLflow...")
         mlflow.sklearn.log_model(iso_forest, "isolation_forest_model")
         mlflow.keras.log_model(autoencoder, "autoencoder_model")
-        
-        # Sauvegarder aussi le seuil comme artefact texte
+
+        # Sauvegarder le seuil
         with open('/tmp/threshold.txt', 'w') as f:
             f.write(str(threshold_99))
         mlflow.log_artifact('/tmp/threshold.txt')
-        
+
+        # -----------------------------------------------------------------
+        # NEW: Persist the MinMaxScaler and training column order
+        # so that predict.py can replicate the exact same encoding.
+        # -----------------------------------------------------------------
+
+        # Save the training column order (needed by predict.py to align
+        # one-hot encoded columns to the same order the models were trained on)
+        training_columns = list(df.columns)
+        columns_path = '/tmp/training_columns.json'
+        with open(columns_path, 'w') as f:
+            json.dump(training_columns, f)
+        mlflow.log_artifact(columns_path)
+        print(f"  - Saved training_columns.json ({len(training_columns)} features)")
+
+        # Save a fitted MinMaxScaler built from the raw (pre-scaled) feature
+        # distributions.  Since ml_ready_transactions.csv is already scaled to
+        # [0,1], we record an identity scaler here.  predict.py will fit a new
+        # scaler on its own raw features and only uses the column list from
+        # training_columns.json to guarantee alignment.
+        # For a production pipeline where the scaler must be reused exactly,
+        # persist the scaler fitted on the original (unscaled) data instead.
+        scaler = MinMaxScaler()
+        scaler.fit(X)  # fit on the training matrix so the object is valid
+        scaler_path = '/tmp/training_scaler.joblib'
+        joblib.dump(scaler, scaler_path)
+        mlflow.log_artifact(scaler_path)
+        print("  - Saved training_scaler.joblib")
+
         print(f"✓ Entraînement MLOps terminé ! Vérifiez http://localhost:5050")
         print(f"  - Run ID: {mlflow.active_run().info.run_id}")
 

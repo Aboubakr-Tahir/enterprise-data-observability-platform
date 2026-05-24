@@ -1,111 +1,217 @@
+"""
+ML Inference Pipeline — reads from BigQuery Silver, scores transactions.
+
+This script:
+  1. Reads `analytics.silver_enriched_transactions` from BigQuery
+  2. Separates metadata (identity columns) from feature columns
+  3. Applies one-hot encoding at inference time (same categories as training)
+  4. Aligns columns to the training feature set (handles new/missing categories)
+  5. Applies MinMaxScaler
+  6. Scores with Isolation Forest + Autoencoder ensemble
+  7. Writes scored output to silver_scored_output.csv
+"""
+
 import pandas as pd
 import numpy as np
 import mlflow
 import mlflow.sklearn
 import mlflow.keras
 import os
+import json
+import joblib
 from pathlib import Path
+from google.cloud import bigquery
 import warnings
 warnings.filterwarnings('ignore')
 
-def main():
-    # MLflow tracking server
-    mlflow.set_tracking_uri("http://localhost:5050")
-    
-    # 1. Chargement du nouveau batch de features à analyser
-    features_path = '/home/aboubakr/Desktop/enterprise-data-observability-platform/csv_denormalisation/ml_ready_transactions.csv'
-    metadata_path = '/home/aboubakr/Desktop/enterprise-data-observability-platform/csv_denormalisation/ml_metadata.csv'
-    
-    if not os.path.exists(features_path):
-        raise FileNotFoundError(f"Features CSV not found: {features_path}")
-    if not os.path.exists(metadata_path):
-        raise FileNotFoundError(f"Metadata CSV not found: {metadata_path}")
-    
-    print("Chargement des features et métadonnées...")
-    df_features = pd.read_csv(features_path, index_col='TransactionID')
-    df_metadata = pd.read_csv(metadata_path, index_col='TransactionID')
-    
-    X = df_features.values
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parent.parent
+GCP_KEYFILE = REPO_ROOT / "gcp-key.json"
+BQ_PROJECT = "gen-lang-client-0635762262"
+BQ_SILVER_TABLE = f"{BQ_PROJECT}.analytics.silver_enriched_transactions"
+OUTPUT_PATH = REPO_ROOT / "csv_denormalisation" / "silver_scored_output.csv"
+MLFLOW_URI = "http://localhost:5050"
+EXPERIMENT_NAME = "Bank_Fraud_Anomaly_Detection"
 
-    # 2. Récupération des modèles et du seuil depuis MLflow
-    # Pour trouver le run_id, regarde l'UI MLflow ou utilise la dernière expérience
-    print("Récupération des modèles depuis MLflow...")
-    
-    experiment = mlflow.get_experiment_by_name("Bank_Fraud_Anomaly_Detection")
+# Columns that are metadata (identity) — not features for the model
+METADATA_COLS = [
+    'transaction_id', 'account_id', 'device_id', 'merchant_id',
+    'ip_address', 'transaction_date'
+]
+
+# Categorical columns to one-hot encode (same as notebook preprocessing)
+CATEGORICAL_COLS = ['transaction_type', 'channel', 'location', 'customer_occupation']
+
+# Numeric feature columns from the Silver table (before encoding)
+NUMERIC_FEATURE_COLS = [
+    'transaction_amount', 'customer_age', 'transaction_duration',
+    'login_attempts', 'account_balance',
+    'tx_hour', 'tx_day_of_week',
+    'account_tx_count_24h', 'account_avg_amount_7d',
+    'merchant_tx_count_1h', 'amount_vs_avg_ratio'
+]
+
+
+def read_silver_from_bigquery():
+    """Read the Silver enriched transactions table from BigQuery."""
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(GCP_KEYFILE)
+    client = bigquery.Client(project=BQ_PROJECT)
+    query = f"SELECT * FROM `{BQ_SILVER_TABLE}`"
+    df = client.query(query).to_dataframe()
+    print(f"Loaded {len(df)} rows from BigQuery Silver table")
+    return df
+
+
+def load_mlflow_artifacts():
+    """Load the latest trained models, threshold, training columns from MLflow."""
+    mlflow.set_tracking_uri(MLFLOW_URI)
+
+    experiment = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
     if experiment is None:
-        raise ValueError("L'expérience 'Bank_Fraud_Anomaly_Detection' n'existe pas. Exécute d'abord train.py")
-    
-    # Récupérer le dernier run réussi
+        raise ValueError(
+            f"L'expérience '{EXPERIMENT_NAME}' n'existe pas. "
+            "Exécute d'abord train.py"
+        )
+
     runs = mlflow.search_runs(
         experiment_ids=[experiment.experiment_id],
         order_by=["start_time DESC"],
         max_results=1,
     )
     if len(runs) == 0:
-        raise ValueError("Aucun run trouvé dans l'expérience MLflow. Exécute d'abord train.py")
-    
+        raise ValueError("Aucun run trouvé dans l'expérience MLflow.")
+
     run_id = runs.iloc[0]['run_id']
     print(f"Utilisation du Run ID: {run_id}")
-    
-    try:
-        iso_forest = mlflow.sklearn.load_model(f"runs:/{run_id}/isolation_forest_model")
-        autoencoder = mlflow.keras.load_model(f"runs:/{run_id}/autoencoder_model")
-        
-        # Charger le seuil (récupéré manuellement depuis le run)
-        client = mlflow.tracking.MlflowClient()
-        artifacts = client.list_artifacts(run_id)
-        
-        threshold = None
-        for artifact in artifacts:
-            if artifact.path == 'threshold.txt':
-                threshold_path = client.download_artifacts(run_id, 'threshold.txt')
-                with open(threshold_path, 'r') as f:
-                    threshold = float(f.read().strip())
-                break
-        
-        if threshold is None:
-            # Fallback: récupérer de la métrique
-            threshold = runs.iloc[0]['metrics.anomaly_threshold_99th_percentile']
-        
-        print(f"Seuil utilisé: {threshold:.4f}")
-        
-    except Exception as e:
-        print(f"Erreur lors du chargement des modèles: {e}")
-        raise
 
-    # 3. Calcul de l'inférence
+    # Load models
+    iso_forest = mlflow.sklearn.load_model(f"runs:/{run_id}/isolation_forest_model")
+    autoencoder = mlflow.keras.load_model(f"runs:/{run_id}/autoencoder_model")
+
+    # Load threshold
+    client = mlflow.tracking.MlflowClient()
+    threshold = None
+    for artifact in client.list_artifacts(run_id):
+        if artifact.path == 'threshold.txt':
+            path = client.download_artifacts(run_id, 'threshold.txt')
+            with open(path, 'r') as f:
+                threshold = float(f.read().strip())
+            break
+    if threshold is None:
+        threshold = runs.iloc[0]['metrics.anomaly_threshold_99th_percentile']
+
+    # Load training column order
+    training_columns = None
+    for artifact in client.list_artifacts(run_id):
+        if artifact.path == 'training_columns.json':
+            path = client.download_artifacts(run_id, 'training_columns.json')
+            with open(path, 'r') as f:
+                training_columns = json.load(f)
+            break
+
+    print(f"Seuil utilisé: {threshold:.4f}")
+    if training_columns:
+        print(f"Training columns loaded: {len(training_columns)} features")
+
+    return iso_forest, autoencoder, threshold, training_columns, run_id
+
+
+def prepare_features(df, training_columns):
+    """
+    Transform Silver table into a feature matrix matching training format.
+
+    Steps:
+      1. Extract metadata (for rejoining after scoring)
+      2. Select numeric + categorical columns
+      3. One-hot encode categoricals
+      4. Align to training column order (fill missing cols with 0, drop extra)
+      5. MinMaxScale to [0, 1]
+    """
+    # 1. Separate metadata
+    metadata_df = df[METADATA_COLS].copy()
+    metadata_df = metadata_df.set_index('transaction_id')
+
+    # 2. Build feature dataframe
+    feature_df = df[NUMERIC_FEATURE_COLS + CATEGORICAL_COLS].copy()
+    feature_df.index = df['transaction_id']
+
+    # 3. One-hot encode categoricals (same drop_first=True as notebook)
+    feature_df = pd.get_dummies(feature_df, columns=CATEGORICAL_COLS, drop_first=True)
+
+    # Ensure all values are numeric (fill any NaN from velocity calcs)
+    feature_df = feature_df.fillna(0).astype(float)
+
+    # 4. Align to training columns
+    if training_columns is not None:
+        # Add missing columns (new cities etc. in training that aren't in inference)
+        for col in training_columns:
+            if col not in feature_df.columns:
+                feature_df[col] = 0.0
+
+        # Reorder to match training and drop any extra columns
+        feature_df = feature_df[training_columns]
+
+    # 5. MinMaxScale
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(feature_df.values)
+    feature_df_scaled = pd.DataFrame(
+        X_scaled, columns=feature_df.columns, index=feature_df.index
+    )
+
+    return feature_df_scaled, metadata_df
+
+
+def main():
+    # 1. Read from BigQuery Silver
+    print("Lecture de la table BigQuery Silver...")
+    df = read_silver_from_bigquery()
+
+    if df.empty:
+        print("⚠ No data in Silver table. Exiting.")
+        return
+
+    # 2. Load models and artifacts from MLflow
+    print("Récupération des modèles depuis MLflow...")
+    iso_forest, autoencoder, threshold, training_columns, run_id = load_mlflow_artifacts()
+
+    # 3. Prepare features
+    print("Préparation des features (encoding + scaling)...")
+    feature_df, metadata_df = prepare_features(df, training_columns)
+    X = feature_df.values
+
+    # 4. Score with ensemble
     print("Calcul des scores d'anomalie...")
-    
     if_scores = -iso_forest.decision_function(X)
     if_scores_norm = (if_scores - if_scores.min()) / (if_scores.max() - if_scores.min() + 1e-6)
-    
+
     X_pred = autoencoder.predict(X, verbose=0)
     ae_mse = np.mean(np.power(X - X_pred, 2), axis=1)
     ae_scores_norm = (ae_mse - ae_mse.min()) / (ae_mse.max() - ae_mse.min() + 1e-6)
-    
+
     final_scores = (0.5 * if_scores_norm) + (0.5 * ae_scores_norm)
 
-    # 4. Construction de la table finale scorée (Rattachement par Index)
+    # 5. Build results
     print("Construction du rapport final...")
-    
-    results_df = pd.DataFrame(index=df_features.index)
+    results_df = pd.DataFrame(index=feature_df.index)
     results_df['anomaly_score'] = final_scores
     results_df['is_anomaly'] = (results_df['anomaly_score'] >= threshold).astype(int)
     results_df['threshold_used'] = threshold
-    
-    # Jointure avec les métadonnées (L'identité du client réapparaît !)
-    final_output = results_df.join(df_metadata, how='inner')
-    
-    # Sauvegarde pour la couche Silver Scored
-    output_path = '/home/aboubakr/Desktop/enterprise-data-observability-platform/csv_denormalisation/silver_scored_output.csv'
-    final_output.to_csv(output_path, index=True)
-    
-    # Statistiques
+
+    # Rejoin with metadata
+    final_output = results_df.join(metadata_df, how='inner')
+
+    # 6. Save
+    final_output.to_csv(OUTPUT_PATH, index=True)
+
     n_anomalies = (final_output['is_anomaly'] == 1).sum()
     print(f"✓ Inférence terminée !")
     print(f"  - Total transactions: {len(final_output)}")
     print(f"  - Anomalies détectées: {n_anomalies} ({100*n_anomalies/len(final_output):.2f}%)")
-    print(f"  - Fichier de sortie: {output_path}")
+    print(f"  - Fichier de sortie: {OUTPUT_PATH}")
+
 
 if __name__ == "__main__":
     main()

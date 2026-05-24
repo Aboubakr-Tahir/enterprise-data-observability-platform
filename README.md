@@ -45,41 +45,50 @@ Build a **Data Observability framework** that continuously monitors data health,
 ## 🏗️ Architecture Overview
 
 ┌─────────────────────────────────────────────────────────────────┐
-│ DATA SOURCES │
-│ (PostgreSQL, Snowflake, BigQuery, S3, APIs...) │
+│ DATA SOURCES                                                    │
+│ (Faker → PostgreSQL core_banking schema)                        │
 └─────────────────────────┬───────────────────────────────────────┘
-│
-▼
+                          │
+                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ AIRFLOW DAG │
-│ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
-│ │ dbt run │ -> │ GX tests │ -> │ Score calc │ │
-│ └──────────┘ └──────────┘ └──────────────┘ │
-│ │ │ │ │
-│ ▼ ▼ ▼ │
-│ OpenLineage Quality quality_scores │
-│ events results (PostgreSQL) │
-│ │ │ │ │
-│ └──────────────┼──────────────────┘ │
-│ ▼ │
-│ [Marquez] │
-│ (Lineage UI) │
+│ AIRFLOW DAG: bank_dataops_pipeline (single end-to-end DAG)      │
+│                                                                 │
+│ ┌──────────────┐   ┌──────────────┐   ┌─────────────────────┐   │
+│ │ 1. Faker     │──▶│ 2. GX Core   │──▶│ 3. Postgres → BQ    │   │
+│ │ (generate)   │   │ (validate)   │   │ (bronze load)       │   │
+│ └──────────────┘   └──────────────┘   └──────────┬──────────┘   │
+│                                                  │              │
+│                                                  ▼              │
+│ ┌──────────────┐   ┌──────────────┐   ┌─────────────────────┐   │
+│ │ 6. dbt test  │◀──│ 5. dbt Silver│◀──│ 4. dbt Staging      │   │
+│ │ (integrity)  │   │ (behavioral) │   │ (views)             │   │
+│ └──────┬───────┘   └──────────────┘   └─────────────────────┘   │
+│        │                                                        │
+│        │  If any upstream task fails: stops                     │
+│        ▼  → UPSTREAM_FAILED status on subsequent tasks          │
+│ ┌──────────────┐                                                │
+│ │ 7. ML Predict│                                                │
+│ │ (inference)  │                                                │
+│ └──────────────┘                                                │
+│        │                                                        │
+│        ▼                                                        │
+│  [OpenLineage events → Marquez Lineage UI]                      │
 └─────────────────────────────────────────────────────────────────┘
-│
-▼
+                          │
+                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ DATA WAREHOUSE │
-│ ┌────────────┐ ┌────────────┐ ┌──────────────┐ │
-│ │ raw tables │→│ staging │→│ mart tables │ │
-│ └────────────┘ └────────────┘ └──────────────┘ │
+│ DATA WAREHOUSE (BigQuery)                                       │
+│ ┌────────────┐ ┌────────────┐ ┌──────────────┐                  │
+│ │   bronze   │→│  analytics │→│ silver_enrich│                  │
+│ │ (raw load) │ │ (stg_*)    │ │ (enriched)   │                  │
+│ └────────────┘ └────────────┘ └──────────────┘                  │
 └─────────────────────────────────────────────────────────────────┘
-│
-▼
+                          │
+                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ SUPERSET DASHBOARD │
-│ - Quality score trends - Lineage graph (from Marquez) │
-│ - Failed tests heatmap - Slack/email alerts │
-│ - Freshness monitoring │
+│ SUPERSET DASHBOARD & ML SCORING                                 │
+│ - Quality score trends   - Lineage graph (from Marquez)         │
+│ - anomaly_score output   - Slack/email alerts                   │
 └─────────────────────────────────────────────────────────────────┘
 
 ---
@@ -165,8 +174,9 @@ Minimal troubleshooting tips:
 - **Dependencies & Mounting**: Added `Faker==25.8.0` to Airflow's `requirements.txt` and mounted `./database` to `/opt/airflow/database` in `docker-compose.yml` to allow Airflow tasks to generate synthetic validation data.
 - **OpenLineage & Marquez Integration**:
   - Configured `AIRFLOW__OPENLINEAGE__TRANSPORT` and `AIRFLOW__OPENLINEAGE__NAMESPACE` inside `docker-compose.yml`.
-  - Upgraded `gx_validation_dag.py` to declare `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage to the `core_banking.transactions` table explicitly.
+  - Declared `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage across the full pipeline.
   - Added the `marquez-web` service to `docker-compose.yml` to expose the Marquez Lineage UI at port `3000`.
+- **Unified End-to-End DAG**: Consolidated two separate DAGs into a single `bank_dataops_pipeline` DAG (`dags/bank_dataops_pipeline.py`). The pipeline runs: Faker data generation → GX validation → Postgres-to-BigQuery bronze load → dbt staging. If any upstream task fails, downstream tasks receive `UPSTREAM_FAILED`, protecting BigQuery from corrupted source data. dbt is now fully automated by the orchestrator.
 
 Notes: I consolidated the extra markdown files into this README to keep the repo tidy. If you need the detailed docs back, they are available in the Git history.
 

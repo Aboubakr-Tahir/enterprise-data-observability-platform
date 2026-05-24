@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: "Staging view over BigQuery bronze.transactions — typed and clean."
+    columns:
+      - name: transaction_id
+        description: "Primary key — must be unique and non-null after transport from Postgres."
+        tests:
+          - unique
+          - not_null
