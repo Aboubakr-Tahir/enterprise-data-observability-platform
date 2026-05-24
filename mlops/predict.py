@@ -27,12 +27,17 @@ warnings.filterwarnings('ignore')
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+import os
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GCP_KEYFILE = REPO_ROOT / "gcp-key.json"
 BQ_PROJECT = "gen-lang-client-0635762262"
-BQ_SILVER_TABLE = f"{BQ_PROJECT}.analytics.silver_enriched_transactions"
+BQ_SILVER_TABLE = f"{BQ_PROJECT}.silver.silver_enriched_transactions"
 OUTPUT_PATH = REPO_ROOT / "csv_denormalisation" / "silver_scored_output.csv"
-MLFLOW_URI = "http://localhost:5050"
+
+# Detect if running in Docker container or locally on host
+IS_DOCKER = os.path.exists('/.dockerenv')
+MLFLOW_URI = "http://mlflow:5050" if IS_DOCKER else "http://localhost:5050"
 EXPERIMENT_NAME = "Bank_Fraud_Anomaly_Detection"
 
 # Columns that are metadata (identity) — not features for the model
@@ -56,7 +61,10 @@ NUMERIC_FEATURE_COLS = [
 
 def read_silver_from_bigquery():
     """Read the Silver enriched transactions table from BigQuery."""
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(GCP_KEYFILE)
+    # Use mounted environment keyfile in Docker container, otherwise fallback to local keyfile
+    if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ or not os.path.exists(os.environ['GOOGLE_APPLICATION_CREDENTIALS']):
+        if GCP_KEYFILE.exists():
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(GCP_KEYFILE)
     client = bigquery.Client(project=BQ_PROJECT)
     query = f"SELECT * FROM `{BQ_SILVER_TABLE}`"
     df = client.query(query).to_dataframe()

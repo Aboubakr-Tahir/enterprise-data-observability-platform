@@ -21,13 +21,13 @@ def connect_postgres():
     return psycopg2.connect(dsn)
 
 
-def extract_transactions(conn, target_date):
+def extract_transactions(conn):
     query = (
         "SELECT transaction_id, account_id, device_id, merchant_id, transaction_amount, transaction_date, "
         "transaction_type, transaction_duration, account_balance, channel, location, ip_address, login_attempts "
-        "FROM core_banking.transactions WHERE DATE(transaction_date) = %s"
+        "FROM core_banking.transactions"
     )
-    df = pd.read_sql(query, conn, params=(target_date,))
+    df = pd.read_sql(query, conn)
     return df
 
 
@@ -99,11 +99,11 @@ def main():
     # Extract and load transactions and dimension tables
     conn = connect_postgres()
     try:
-        df = extract_transactions(conn, target_date)
+        df = extract_transactions(conn)
         if not df.empty:
-            load_to_bq(df, project, dataset, 'transactions')
+            load_to_bq(df, project, dataset, 'transactions', truncate=True)
         else:
-            print(f"No transactions found for {target_date}")
+            print("No transactions found in Postgres")
         
         # Extract dimension tables (full refresh each run)
         accounts_df = extract_accounts(conn)

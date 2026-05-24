@@ -22,6 +22,9 @@ x-airflow-common: &airflow-common
     - ./great_expectations:/opt/airflow/great_expectations
     - ./gcp-key.json:/secrets/gcp-key.json:ro
     - ./logs:/opt/airflow/logs
+    - ./mlops:/opt/airflow/mlops
+    - ./csv_denormalisation:/opt/airflow/csv_denormalisation
+    - ${PWD}/mlruns:${PWD}/mlruns
   depends_on:
     postgres:
       condition: service_healthy

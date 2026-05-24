@@ -171,12 +171,22 @@ Minimal troubleshooting tips:
 ### Recent Platform Updates (May 2026)
 
 - **Airflow Environment Upgrade**: Updated the Airflow base image to Python 3.10 to fix compatibility issues with Great Expectations 1.17.2 and MLflow.
-- **Dependencies & Mounting**: Added `Faker==25.8.0` to Airflow's `requirements.txt` and mounted `./database` to `/opt/airflow/database` in `docker-compose.yml` to allow Airflow tasks to generate synthetic validation data.
+- **Unified End-to-End Orchestration**: Consolidated raw data generation, PostgreSQL validation (GX Core), BigQuery ingestion, staging views, Silver transformation tables, integrity validation, and ML inference scoring into a single linear pipeline DAG (`dags/bank_dataops_pipeline.py`).
+- **BigQuery Sandbox Workaround (Idempotency)**: Refactored `database/pg_to_bq.py` to use bulk `WRITE_TRUNCATE` uploads rather than `APPEND` + `DELETE` DML queries, completely bypassing the BigQuery Sandbox free tier DML billing restrictions. This provides perfect, zero-duplicate idempotency!
+- **dbt Medallion Architecture & Custom Schema Routing**:
+  - `staging` models are written to the default target `analytics` dataset.
+  - Silver enriched model calculates behavioral velocities (window functions for transaction frequency, temporal seasonals) and routes to a dedicated **`silver`** dataset.
+  - Implemented a custom `generate_schema_name.sql` macro to bypass target prefixing in BigQuery, ensuring clean isolation of layers.
+- **dbt Integrity Tests (Defense in Depth)**: Configured dbt tests (`unique` + `not_null` constraints on `transaction_id`) inside `models/staging/schema.yml` to protect data warehouse load from duplicate rows or corruption.
+- **Self-Contained Containerized ML Execution**:
+  - **Volume Mounts**: Mapped `./mlops`, `./csv_denormalisation`, and the host-absolute `${PWD}/mlruns` as volumes in `docker-compose.yml` for all Airflow scheduler/webserver containers.
+  - **Docker ML Stack**: Integrated `scikit-learn`, `tensorflow-cpu`, `joblib`, and `keras>=3.0.0` inside `requirements.txt` to run ML models natively inside Docker containers.
+  - **Dynamic Environment Detection**: Modified `predict.py` and `train.py` to dynamically switch the MLflow tracking URI (`http://mlflow:5050` in Docker vs. `http://localhost:5050` on host) and BQ Credentials (`/secrets/gcp-key.json` inside container vs. local fallback).
+  - **Keras Serialization Version Alignment**: Aligned Keras versions between training and inference by running `train.py` inside the container using the container's native `Keras 3.12.2` package. This resolves all serialization model deserialization errors (`quantization_config` Dense layer errors) while ensuring host Keras (`3.14.1`) remains backward-compatible to inspect the models locally.
 - **OpenLineage & Marquez Integration**:
   - Configured `AIRFLOW__OPENLINEAGE__TRANSPORT` and `AIRFLOW__OPENLINEAGE__NAMESPACE` inside `docker-compose.yml`.
   - Declared `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage across the full pipeline.
   - Added the `marquez-web` service to `docker-compose.yml` to expose the Marquez Lineage UI at port `3000`.
-- **Unified End-to-End DAG**: Consolidated two separate DAGs into a single `bank_dataops_pipeline` DAG (`dags/bank_dataops_pipeline.py`). The pipeline runs: Faker data generation → GX validation → Postgres-to-BigQuery bronze load → dbt staging. If any upstream task fails, downstream tasks receive `UPSTREAM_FAILED`, protecting BigQuery from corrupted source data. dbt is now fully automated by the orchestrator.
 
 Notes: I consolidated the extra markdown files into this README to keep the repo tidy. If you need the detailed docs back, they are available in the Git history.
 

@@ -11,19 +11,25 @@
   - **MLflow** (Machine Learning Operations tracking via SQLite, port 5050)
   - **Docker Compose** (Entire data stack containerized and networked via `data_stack`)
 
-## Recent Modifications & Current State (May 23, 2026)
+## Recent Modifications & Current State (May 24, 2026)
 
 - **Log Permissions Issue Fixed**: Fixed a crash loop mapping issue where `airflow-scheduler` couldn't create logs in the mounted `/opt/airflow/logs` volume by setting `AIRFLOW_UID=1000` in the `.env` file and restarting the services.
 - **Lineage Integration**: OpenLineage integration in the Airflow container points successfully to `http://marquez:5000` and `marquez-web` explicitly has `WEB_PORT=3000` set to prevent UI container side-crashing.
 - **Unified DAG Consolidation**: Single end-to-end DAG `bank_dataops_pipeline` in `dags/bank_dataops_pipeline.py`. The 7-task linear chain: `generate_faker_data → validate_with_gx → extract_postgres_to_bq → run_dbt_staging → run_dbt_silver → run_dbt_test → run_ml_prediction`. If any task fails, downstream tasks receive UPSTREAM_FAILED.
-- **BigQuery Bronze Load Verified**: Populated `bronze.transactions`, `bronze.accounts`, `bronze.devices`, and `bronze.merchants` successfully.
-- **dbt Staging Models**: `analytics.stg_accounts`, `analytics.stg_devices`, `analytics.stg_merchants`, `analytics.stg_transactions` (views over bronze).
+- **BigQuery Sandbox Workaround**: Refactored `pg_to_bq.py` to use bulk `WRITE_TRUNCATE` instead of `APPEND` + `DELETE` DML queries to bypass free Sandbox tier DML billing restrictions. This achieves perfect, zero-duplicate idempotency!
+- **dbt Staging & Silver Routing**:
+  - `staging` models are written to `analytics` dataset.
+  - Silver enriched model is written to a dedicated `silver` dataset (`silver.silver_enriched_transactions`).
+  - Added a custom `generate_schema_name.sql` macro to bypass target prefixing in BigQuery, allowing direct materialization in the `silver` dataset.
 - **dbt Integrity Tests (Defense in Depth)**: Added `schema.yml` with `unique` + `not_null` tests on `stg_transactions.transaction_id`. Validates that `pg_to_bq.py` didn't corrupt/duplicate data during Postgres → BigQuery transport. Complements GX validation in Postgres.
-- **dbt Silver Model**: Created `analytics.silver_enriched_transactions` (materialized table) that JOINs transactions with accounts and computes behavioral velocity features in BigQuery SQL (`account_tx_count_24h`, `account_avg_amount_7d`, `merchant_tx_count_1h`, `amount_vs_avg_ratio`, `tx_hour`, `tx_day_of_week`). Text columns (location, channel, occupation) stay raw — encoding deferred to predict.py.
-- **predict.py Refactored**: Now reads from BigQuery Silver table instead of static CSVs. Applies one-hot encoding at inference time, aligns columns to the training feature order (loaded from `training_columns.json` MLflow artifact), scales with MinMaxScaler, and scores with the Isolation Forest + Autoencoder ensemble.
-- **train.py Updated**: Now persists `training_columns.json` (feature order) and `training_scaler.joblib` as MLflow artifacts for predict.py to consume.
-- **Dependency Fix Applied**: Updated `requirements.txt` to `pandas==2.1.4` and `apache-airflow-providers-google==10.22.0`. Updated `mlops/requirements-mlops.txt` with `google-cloud-bigquery`, `pandas-gbq`, `joblib`.
+- **Self-Contained Containerized ML Inferences**:
+  - **Mounts & Directory mapping**: Mapped `./mlops`, `./csv_denormalisation`, and `${PWD}/mlruns` as volumes in `docker-compose.yml` for all Airflow scheduler/webserver containers.
+  - **Docker ML Stack**: Added `scikit-learn==1.5.1`, `tensorflow-cpu>=2.15.0,<2.18.0`, `joblib>=1.3.0`, and `keras>=3.0.0` directly to `requirements.txt` to enable ML processing inside Docker.
+  - **Dynamic Environment Detection**: Modified `predict.py` and `train.py` to dynamically switch the MLflow tracking URI (`http://mlflow:5050` in Docker vs. `http://localhost:5050` on host) and Google Credentials (`/secrets/gcp-key.json` inside container vs. local fallback).
+  - **Keras Serialization Version Alignment**: Aligned Keras versions between training and inference by running `train.py` inside the container using the container's native `Keras 3.12.2` package. This resolves all serialization model deserialization errors (`quantization_config` Dense layer errors) while ensuring host Keras (`3.14.1`) remains backward-compatible to inspect the models locally.
+- **Dependency Fix Applied**: Updated `requirements.txt` to include Airflow ML dependencies. Updated `mlops/requirements-mlops.txt` with `google-cloud-bigquery`, `pandas-gbq`, `joblib`.
 - **dbt Local Execution Fixed**: Installed `dbt-bigquery==1.11.1` in the local `.venv`. Added a `dev` target in `dbt/profiles.yml` pointing to the repo-root `gcp-key.json` for local runs, keeping `prod` target for Docker.
+
 
 ## Agent Guidelines
 

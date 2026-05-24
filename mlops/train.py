@@ -16,12 +16,17 @@ warnings.filterwarnings('ignore')
 # ---------------------------------------------------------------------------
 # MLflow Configuration
 # ---------------------------------------------------------------------------
-mlflow.set_tracking_uri("http://localhost:5050")
+from pathlib import Path
+REPO_ROOT = Path(__file__).resolve().parent.parent
+IS_DOCKER = os.path.exists('/.dockerenv')
+MLFLOW_URI = "http://mlflow:5050" if IS_DOCKER else "http://localhost:5050"
+
+mlflow.set_tracking_uri(MLFLOW_URI)
 from mlflow.tracking import MlflowClient
 import time
 client = MlflowClient()
 _base_exp_name = "Bank_Fraud_Anomaly_Detection"
-_artifact_root = f"file://{os.path.join(os.getcwd(), 'mlruns')}"
+_artifact_root = f"file://{os.path.join(REPO_ROOT, 'mlruns')}"
 
 try:
     existing_exp = client.get_experiment_by_name(_base_exp_name)
@@ -71,7 +76,7 @@ def build_autoencoder(input_dim):
 
 def main():
     # 2. Lecture du dataset de Features créé par le script précédent
-    data_path = '/home/aboubakr/Desktop/enterprise-data-observability-platform/csv_denormalisation/ml_ready_transactions.csv'
+    data_path = os.path.join(REPO_ROOT, 'csv_denormalisation', 'ml_ready_transactions.csv')
 
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Le fichier {data_path} est introuvable. Exécute d'abord le préprocessing.")

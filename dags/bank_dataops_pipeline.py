@@ -58,7 +58,7 @@ bigquery_analytics_ds = Dataset(
 
 bigquery_silver_ds = Dataset(
     namespace="bigquery",
-    name="gen-lang-client-0635762262.analytics.silver_enriched_transactions",
+    name="gen-lang-client-0635762262.silver.silver_enriched_transactions",
 )
 
 
@@ -186,14 +186,11 @@ with DAG(
     )
 
     # Task 7 — ML Prediction: score transactions from Silver table
-    # Runs on the host .venv (TensorFlow + scikit-learn are too heavy for Docker)
+    # Runs natively inside the Airflow Docker container
     run_ml_prediction = BashOperator(
         task_id="run_ml_prediction",
         bash_command=(
-            "/home/aboubakr/Desktop/enterprise-data-observability-platform/"
-            ".venv/bin/python "
-            "/home/aboubakr/Desktop/enterprise-data-observability-platform/"
-            "mlops/predict.py"
+            "python /opt/airflow/mlops/predict.py"
         ),
         inlets=[bigquery_silver_ds],
     )
