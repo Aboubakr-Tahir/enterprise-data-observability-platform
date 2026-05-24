@@ -183,6 +183,7 @@ Minimal troubleshooting tips:
   - **Docker ML Stack**: Integrated `scikit-learn`, `tensorflow-cpu`, `joblib`, and `keras>=3.0.0` inside `requirements.txt` to run ML models natively inside Docker containers.
   - **Dynamic Environment Detection**: Modified `predict.py` and `train.py` to dynamically switch the MLflow tracking URI (`http://mlflow:5050` in Docker vs. `http://localhost:5050` on host) and BQ Credentials (`/secrets/gcp-key.json` inside container vs. local fallback).
   - **Keras Serialization Version Alignment**: Aligned Keras versions between training and inference by running `train.py` inside the container using the container's native `Keras 3.12.2` package. This resolves all serialization model deserialization errors (`quantization_config` Dense layer errors) while ensuring host Keras (`3.14.1`) remains backward-compatible to inspect the models locally.
+  - **BigQuery Closed-Loop Storage**: Configured `predict.py` to upload the final scored transactions (`anomaly_score` and `is_anomaly`) directly back to BigQuery as `silver.silver_scored_transactions` using an idempotent `WRITE_TRUNCATE` load job, completing the missing link for final Superset BI reporting.
 - **OpenLineage & Marquez Integration**:
   - Configured `AIRFLOW__OPENLINEAGE__TRANSPORT` and `AIRFLOW__OPENLINEAGE__NAMESPACE` inside `docker-compose.yml`.
   - Declared `inlets` and `outlets` leveraging the OpenLineage provider (`openlineage.client.run.Dataset`) to map lineage across the full pipeline.

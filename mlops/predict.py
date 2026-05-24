@@ -33,6 +33,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 GCP_KEYFILE = REPO_ROOT / "gcp-key.json"
 BQ_PROJECT = "gen-lang-client-0635762262"
 BQ_SILVER_TABLE = f"{BQ_PROJECT}.silver.silver_enriched_transactions"
+BQ_SCORED_TABLE = f"{BQ_PROJECT}.silver.silver_scored_transactions"
 OUTPUT_PATH = REPO_ROOT / "csv_denormalisation" / "silver_scored_output.csv"
 
 # Detect if running in Docker container or locally on host
@@ -70,6 +71,29 @@ def read_silver_from_bigquery():
     df = client.query(query).to_dataframe()
     print(f"Loaded {len(df)} rows from BigQuery Silver table")
     return df
+
+
+def write_scored_to_bigquery(df):
+    """Write the scored anomaly output table back to BigQuery."""
+    # Use mounted environment keyfile in Docker container, otherwise fallback to local keyfile
+    if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ or not os.path.exists(os.environ['GOOGLE_APPLICATION_CREDENTIALS']):
+        if GCP_KEYFILE.exists():
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = str(GCP_KEYFILE)
+    
+    client = bigquery.Client(project=BQ_PROJECT)
+    
+    # Reset index so transaction_id becomes a standard column in the destination table
+    df_to_upload = df.reset_index()
+    
+    # Overwrite the table to ensure idempotency across pipeline runs
+    job_config = bigquery.LoadJobConfig(
+        write_disposition="WRITE_TRUNCATE",
+    )
+    
+    print(f"Saving scored transactions to BigQuery: {BQ_SCORED_TABLE}...")
+    job = client.load_table_from_dataframe(df_to_upload, BQ_SCORED_TABLE, job_config=job_config)
+    job.result()  # Wait for the loading job to complete
+    print(f"✓ Successfully pushed scored transactions to BigQuery!")
 
 
 def load_mlflow_artifacts():
@@ -213,6 +237,7 @@ def main():
 
     # 6. Save
     final_output.to_csv(OUTPUT_PATH, index=True)
+    write_scored_to_bigquery(final_output)
 
     n_anomalies = (final_output['is_anomaly'] == 1).sum()
     print(f"✓ Inférence terminée !")
