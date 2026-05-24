@@ -1,0 +1,18 @@
+database_name: Google BigQuery
+sqlalchemy_uri: bigquery://gen-lang-client-0635762262
+cache_timeout: null
+expose_in_sqllab: true
+allow_run_async: false
+allow_ctas: false
+allow_cvas: false
+allow_dml: false
+allow_file_upload: false
+extra:
+  metadata_params: {}
+  engine_params: {}
+  metadata_cache_timeout: {}
+  schemas_allowed_for_file_upload: []
+impersonate_user: false
+configuration_method: sqlalchemy_form
+uuid: c26c6803-41c5-4bad-9874-bda13caf670d
+version: 1.0.0

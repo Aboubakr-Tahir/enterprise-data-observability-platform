@@ -1,6 +1,8 @@
 FROM apache/superset:latest
 
 USER root
-# Install psycopg2 into the specific pip environment that Superset's virtualenv uses
-RUN pip install --target=/app/.venv/lib/python3.10/site-packages psycopg2-binary
+# Install pip in virtualenv and install dependencies correctly using virtualenv's python to avoid namespace clashes
+# Pin sqlalchemy<2.0 to prevent breaking Apache Superset's core dependencies!
+RUN /app/.venv/bin/python -m ensurepip --default-pip && \
+    /app/.venv/bin/python -m pip install "sqlalchemy<2.0" psycopg2-binary sqlalchemy-bigquery google-cloud-bigquery
 USER superset

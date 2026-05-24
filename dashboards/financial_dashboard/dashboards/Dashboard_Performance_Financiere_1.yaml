@@ -1,0 +1,162 @@
+dashboard_title: "Dashboard Performance Financi\xE8re"
+description: null
+css: ''
+slug: null
+certified_by: ''
+certification_details: ''
+published: false
+uuid: 3de4540b-8883-4f95-9d14-5f10845957e5
+position:
+  CHART-explore-2-1:
+    children: []
+    id: CHART-explore-2-1
+    meta:
+      chartId: 2
+      height: 50
+      sliceName: Time-series Line Chart
+      uuid: cedae06a-dc90-44f5-8bff-9868bc0a9e52
+      width: 5
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-gMaYP4tUZ0pJNzO7DICFR
+    type: CHART
+  CHART-explore-3-1:
+    children: []
+    id: CHART-explore-3-1
+    meta:
+      chartId: 3
+      height: 50
+      sliceName: Transaction repartition by Channel
+      uuid: 1883a575-60c5-4d86-b2f9-c1cec7ba3931
+      width: 4
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-gMaYP4tUZ0pJNzO7DICFR
+    type: CHART
+  CHART-explore-4-1:
+    children: []
+    id: CHART-explore-4-1
+    meta:
+      chartId: 4
+      height: 50
+      sliceName: Top 5 Most Profitable Locations
+      uuid: 8b1941af-d330-4072-b929-e15156ffcc3f
+      width: 12
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-XwRHJ8yQUZimwyhLpYXXj
+    type: CHART
+  CHART-n35AUQw8ujh9wtwxHocNq:
+    children: []
+    id: CHART-n35AUQw8ujh9wtwxHocNq
+    meta:
+      chartId: 1
+      height: 50
+      sliceName: KPI - Volume Global Sain
+      uuid: 49253442-563d-4814-99fc-995ab395491a
+      width: 3
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    - ROW-gMaYP4tUZ0pJNzO7DICFR
+    type: CHART
+  DASHBOARD_VERSION_KEY: v2
+  GRID_ID:
+    children:
+    - ROW-gMaYP4tUZ0pJNzO7DICFR
+    - ROW-XwRHJ8yQUZimwyhLpYXXj
+    id: GRID_ID
+    parents:
+    - ROOT_ID
+    type: GRID
+  HEADER_ID:
+    id: HEADER_ID
+    meta:
+      text: "Dashboard Performance Financi\xE8re"
+    type: HEADER
+  ROOT_ID:
+    children:
+    - GRID_ID
+    id: ROOT_ID
+    type: ROOT
+  ROW-XwRHJ8yQUZimwyhLpYXXj:
+    children:
+    - CHART-explore-4-1
+    id: ROW-XwRHJ8yQUZimwyhLpYXXj
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+  ROW-gMaYP4tUZ0pJNzO7DICFR:
+    children:
+    - CHART-n35AUQw8ujh9wtwxHocNq
+    - CHART-explore-2-1
+    - CHART-explore-3-1
+    id: ROW-gMaYP4tUZ0pJNzO7DICFR
+    meta:
+      background: BACKGROUND_TRANSPARENT
+    parents:
+    - ROOT_ID
+    - GRID_ID
+    type: ROW
+metadata:
+  chart_configuration:
+    '2':
+      id: 2
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 1
+        - 3
+        - 4
+    '3':
+      id: 3
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 1
+        - 2
+        - 4
+    '4':
+      id: 4
+      crossFilters:
+        scope: global
+        chartsInScope:
+        - 1
+        - 2
+        - 3
+  global_chart_configuration:
+    scope:
+      rootPath:
+      - ROOT_ID
+      excluded: []
+    chartsInScope:
+    - 1
+    - 2
+    - 3
+    - 4
+  native_filter_configuration: []
+  chart_customization_config: []
+  map_label_colors:
+    Volume Global Sain (DH): '#1FA8C9'
+    SUM(transaction_amount): '#1FA8C9'
+    Online: '#1FA8C9'
+    ATM: '#454E7C'
+    POS: '#5AC189'
+    Mobile: '#FF7F44'
+  color_scheme: ''
+  refresh_frequency: 0
+  color_scheme_domain: []
+  expanded_slices: {}
+  label_colors: {}
+  shared_label_colors: []
+  timed_refresh_immune_slices: []
+  cross_filters_enabled: true
+  default_filters: '{}'
+theme_uuid: null
+version: 1.0.0

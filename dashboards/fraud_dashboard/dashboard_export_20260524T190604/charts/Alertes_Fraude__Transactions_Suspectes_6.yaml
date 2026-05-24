@@ -1,0 +1,84 @@
+slice_name: "\U0001F6A8 Alertes Fraude : Transactions Suspectes"
+description: null
+certified_by: null
+certification_details: null
+viz_type: table
+params:
+  datasource: 2__table
+  viz_type: table
+  slice_id: 6
+  matrixify_enable: false
+  matrixify_mode_columns: disabled
+  matrixify_dimension_selection_mode_columns: members
+  matrixify_dimension_columns:
+    dimension: ''
+    values: []
+  matrixify_topn_value_columns: 10
+  matrixify_all_sort_by_columns: a_to_z
+  matrixify_topn_order_columns: true
+  matrixify_show_column_headers: true
+  matrixify_fit_columns_dynamically: true
+  matrixify_mode_rows: disabled
+  matrixify_dimension_selection_mode_rows: members
+  matrixify_dimension_rows:
+    dimension: ''
+    values: []
+  matrixify_topn_value_rows: 10
+  matrixify_all_sort_by_rows: a_to_z
+  matrixify_topn_order_rows: true
+  matrixify_show_row_labels: true
+  matrixify_row_height: 300
+  matrixify_charts_per_row: 3
+  matrixify_cell_title_template: ''
+  query_mode: raw
+  groupby: []
+  temporal_columns_lookup:
+    transaction_date: true
+  all_columns:
+  - transaction_date
+  - account_id
+  - ip_address
+  - transaction_amount
+  - anomaly_score
+  percent_metrics: []
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    expressionType: SIMPLE
+    operator: TEMPORAL_RANGE
+    subject: transaction_date
+  order_by_cols:
+  - '["anomaly_score", false]'
+  server_pagination: false
+  row_limit: 10000
+  table_timestamp_format: smart_date
+  include_search: true
+  allow_rearrange_columns: false
+  allow_render_html: true
+  column_config:
+    anomaly_score:
+      d3SmallNumberFormat: ',.2f'
+  show_cell_bars: true
+  align_pn: false
+  color_pn: true
+  comparison_color_enabled: false
+  comparison_color_scheme: Green
+  conditional_formatting:
+  - colorScheme: colorError
+    column: anomaly_score
+    columnFormatting: anomaly_score
+    objectFormatting: BACKGROUND_COLOR
+    operator: None
+    useGradient: true
+  comparison_type: values
+  extra_form_data: {}
+  dashboards:
+  - 2
+query_context: '{"datasource":{"id":2,"type":"table"},"force":false,"queries":[{"filters":[{"col":"transaction_date","op":"TEMPORAL_RANGE","val":"No
+  filter"}],"extras":{"having":"","where":""},"applied_time_extras":{},"columns":["transaction_date","account_id","ip_address","transaction_amount","anomaly_score"],"orderby":[["anomaly_score",false]],"annotation_layers":[],"row_limit":10000,"series_limit":0,"group_others_when_limit_reached":false,"order_desc":true,"url_params":{},"custom_params":{},"custom_form_data":{},"post_processing":[],"time_offsets":[]}],"form_data":{"datasource":"2__table","viz_type":"table","slice_id":6,"matrixify_enable":false,"matrixify_mode_columns":"disabled","matrixify_dimension_selection_mode_columns":"members","matrixify_dimension_columns":{"dimension":"","values":[]},"matrixify_topn_value_columns":10,"matrixify_all_sort_by_columns":"a_to_z","matrixify_topn_order_columns":true,"matrixify_show_column_headers":true,"matrixify_fit_columns_dynamically":true,"matrixify_mode_rows":"disabled","matrixify_dimension_selection_mode_rows":"members","matrixify_dimension_rows":{"dimension":"","values":[]},"matrixify_topn_value_rows":10,"matrixify_all_sort_by_rows":"a_to_z","matrixify_topn_order_rows":true,"matrixify_show_row_labels":true,"matrixify_row_height":300,"matrixify_charts_per_row":3,"matrixify_cell_title_template":"","query_mode":"raw","groupby":[],"temporal_columns_lookup":{"transaction_date":true},"all_columns":["transaction_date","account_id","ip_address","transaction_amount","anomaly_score"],"percent_metrics":[],"adhoc_filters":[{"clause":"WHERE","comparator":"No
+  filter","expressionType":"SIMPLE","operator":"TEMPORAL_RANGE","subject":"transaction_date"}],"order_by_cols":["[\"anomaly_score\",
+  false]"],"server_pagination":false,"row_limit":10000,"table_timestamp_format":"smart_date","include_search":true,"allow_rearrange_columns":false,"allow_render_html":true,"column_config":{"anomaly_score":{"d3SmallNumberFormat":",.2f"}},"show_cell_bars":true,"align_pn":false,"color_pn":true,"comparison_color_enabled":false,"comparison_color_scheme":"Green","conditional_formatting":[{"colorScheme":"colorError","column":"anomaly_score","columnFormatting":"anomaly_score","objectFormatting":"BACKGROUND_COLOR","operator":"None","useGradient":true}],"comparison_type":"values","extra_form_data":{},"dashboards":[2],"force":false,"result_format":"json","result_type":"full","include_time":false},"result_format":"json","result_type":"full"}'
+cache_timeout: null
+uuid: 267e8de0-0e8a-4e57-b0ff-58dc3c0ad6c3
+version: 1.0.0
+dataset_uuid: 4158ad53-2de0-4067-beeb-4165768d1993
