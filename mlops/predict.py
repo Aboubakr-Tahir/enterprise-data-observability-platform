@@ -31,7 +31,7 @@ import os
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GCP_KEYFILE = REPO_ROOT / "gcp-key.json"
-BQ_PROJECT = "gen-lang-client-0635762262"
+BQ_PROJECT = os.environ.get("GCP_PROJECT_ID", "gen-lang-client-0635762262")
 BQ_SILVER_TABLE = f"{BQ_PROJECT}.silver.silver_enriched_transactions"
 BQ_SCORED_TABLE = f"{BQ_PROJECT}.silver.silver_scored_transactions"
 OUTPUT_PATH = REPO_ROOT / "csv_denormalisation" / "silver_scored_output.csv"
@@ -74,7 +74,12 @@ def read_silver_from_bigquery():
 
 
 def write_scored_to_bigquery(df):
-    """Write the scored anomaly output table back to BigQuery."""
+    """Write the scored anomaly output table back to BigQuery.
+    
+    Uses WRITE_TRUNCATE (a load-job disposition, NOT a DML query) which is
+    fully compatible with BigQuery Free Tier.  Since predict.py always
+    re-scores the entire Silver table, TRUNCATE+LOAD is the correct semantic.
+    """
     # Use mounted environment keyfile in Docker container, otherwise fallback to local keyfile
     if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ or not os.path.exists(os.environ['GOOGLE_APPLICATION_CREDENTIALS']):
         if GCP_KEYFILE.exists():
@@ -85,12 +90,13 @@ def write_scored_to_bigquery(df):
     # Reset index so transaction_id becomes a standard column in the destination table
     df_to_upload = df.reset_index()
     
-    # Overwrite the table to ensure idempotency across pipeline runs
+    # WRITE_TRUNCATE is a load-job disposition — allowed on Free Tier
+    # (unlike DELETE which is a DML query and is forbidden)
     job_config = bigquery.LoadJobConfig(
         write_disposition="WRITE_TRUNCATE",
     )
     
-    print(f"Saving scored transactions to BigQuery: {BQ_SCORED_TABLE}...")
+    print(f"[TRUNCATE+LOAD] Saving scored transactions to BigQuery: {BQ_SCORED_TABLE}...")
     job = client.load_table_from_dataframe(df_to_upload, BQ_SCORED_TABLE, job_config=job_config)
     job.result()  # Wait for the loading job to complete
     print(f"✓ Successfully pushed scored transactions to BigQuery!")

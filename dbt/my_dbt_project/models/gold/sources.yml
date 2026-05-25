@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: ml_results
-    database: gen-lang-client-0635762262 # Ton projet GCP
+    database: "{{ env_var('GCP_PROJECT_ID', 'gen-lang-client-0635762262') }}"
     schema: silver
     tables:
       - name: silver_scored_transactions

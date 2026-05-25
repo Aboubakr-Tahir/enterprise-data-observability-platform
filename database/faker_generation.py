@@ -10,6 +10,13 @@ Behavior:
 - Ensures dimension tables (accounts, devices, merchants) contain a fixed pool (~100 each).
 - Computes running balances per account using prior latest balance (before the date) as starting point.
 - All generated transactions have timestamps strictly on the given date.
+
+Chaos Injection Strategy (for observability demonstration):
+───────────────────────────────────────────────────────────
+• EVEN days: ~5% structural corruptions (negative amounts, unknown channels)
+  → Triggers GX Core failures → DAG blocked → Marquez lineage shows RED
+• ODD days:  ~10% behavioral fraud patterns (brute force, skimming, laundering)
+  → GX passes → ML ensemble detects and quarantines → Gold dashboard shows alerts
 """
 import argparse
 import random
@@ -145,16 +152,34 @@ def get_latest_balances(conn, account_ids, target_date):
 
 
 def generate_transactions_for_date(faker, accounts, devices, merchants, balances, target_date, n_tx):
+    """Generate transactions with controlled chaos injection.
+
+    Chaos Strategy (date-driven, deterministic):
+    ─────────────────────────────────────────────
+    • EVEN days (2, 4, 6, …): ~5% STRUCTURAL corruptions
+      → Negative/zero amounts, unknown channels
+      → GX Core MUST fail → DAG stops → Marquez shows RED
+
+    • ODD days (1, 3, 5, …): ~10% BEHAVIORAL fraud patterns
+      → Structure is valid (GX passes GREEN)
+      → ML (Autoencoder + Isolation Forest) detects anomalies
+      → Quarantined in Gold layer
+    """
     tx_rows = []
-    channels = ["ATM", "Mobile", "Online", "POS"]
+    # Realistic channel distribution (not uniform)
+    channels = ["Online", "Mobile", "ATM", "POS"]
+    channel_weights = [0.50, 0.30, 0.12, 0.08]
     tx_types = ["withdrawal", "deposit", "transfer", "payment"]
 
     account_ids = [a['account_id'] for a in accounts]
     device_ids = [d['device_id'] for d in devices]
     merchant_ids = [m['merchant_id'] for m in merchants]
 
+    is_even_day = target_date.day % 2 == 0
+    n_corrupted = 0
+    n_fraud = 0
+
     for i in range(n_tx):
-        # deterministic pseudo-random choices from seeded faker
         account_id = random.choice(account_ids)
         device_id = random.choice(device_ids)
         tx_type = random.choices(tx_types, weights=[0.4, 0.2, 0.1, 0.3])[0]
@@ -171,16 +196,64 @@ def generate_transactions_for_date(faker, accounts, devices, merchants, balances
 
         duration = random.randint(1, 300)  # seconds
 
-        # ip and channel
         ip_address = faker.ipv4_public()
-        channel = random.choice(channels)
+        channel = random.choices(channels, weights=channel_weights)[0]
         location = faker.city()
-        login_attempts = random.choices([1, 1, 1, 2, 3], weights=[0.6,0.6,0.6,0.15,0.05])[0]
+        login_attempts = random.choices([1, 1, 1, 2, 3], weights=[0.6, 0.6, 0.6, 0.15, 0.05])[0]
+
+        # ── EVEN DAYS: Inject structural corruptions (5%) ──────────
+        # These MUST trigger GX Core failures:
+        #   - expect_column_values_to_be_between(transaction_amount, min=0, strict_min=True)
+        #   - expect_column_values_to_be_in_set(channel, [ATM, Mobile, Online, Branch, POS])
+        if is_even_day:
+            roll = random.random()
+            if roll < 0.02:
+                # Corruption Type 1: Negative amount → violates GX rule 4
+                amount = random.choice([-150.00, -500.00, -1200.00])
+                n_corrupted += 1
+            elif roll < 0.035:
+                # Corruption Type 2: Zero amount → violates GX strict_min > 0
+                amount = 0.00
+                n_corrupted += 1
+            elif roll < 0.05:
+                # Corruption Type 3: Unknown channel → violates GX rule 6
+                channel = random.choice(["UNKNOWN_API_GATEWAY", "INTERNAL_TEST", "DEPRECATED_LEGACY"])
+                n_corrupted += 1
+
+        # ── ODD DAYS: Inject behavioral fraud patterns (10%) ───────
+        # Structure stays VALID (GX passes), but features are anomalous
+        # enough for the ML ensemble to flag them.
+        if not is_even_day:
+            roll = random.random()
+            if roll < 0.04:
+                # Fraud Type 1: Account Takeover / Brute Force Attack
+                # Huge amount + many login attempts + ultra-fast (bot speed)
+                # + forced to nighttime hours (2-5 AM)
+                amount = round(random.uniform(15000, 30000), 2)
+                login_attempts = random.randint(4, 7)
+                duration = random.randint(1, 5)
+                seconds = random.randint(7200, 18000)  # 2:00 AM – 5:00 AM
+                tx_time = datetime.combine(target_date, datetime.min.time()) + timedelta(seconds=seconds)
+                n_fraud += 1
+            elif roll < 0.07:
+                # Fraud Type 2: Rapid micro-transactions (Card Skimming)
+                # Many tiny amounts in very short duration
+                amount = round(random.uniform(0.01, 5.00), 2)
+                duration = random.randint(1, 3)
+                login_attempts = 1
+                n_fraud += 1
+            elif roll < 0.10:
+                # Fraud Type 3: Velocity abuse (Money Laundering pattern)
+                # Large amount + abnormally long duration + ATM channel
+                amount = round(random.uniform(8000, 20000), 2)
+                duration = random.randint(1, 2)
+                channel = "ATM"
+                login_attempts = random.randint(3, 5)
+                n_fraud += 1
 
         # compute new balance
         cur_balance = balances.get(account_id, None)
         if cur_balance is None:
-            # initialize if not present
             cur_balance = round(random.uniform(100.0, 10000.0), 2)
             balances[account_id] = cur_balance
 
@@ -189,7 +262,6 @@ def generate_transactions_for_date(faker, accounts, devices, merchants, balances
         else:  # deposit
             new_balance = round(cur_balance + amount, 2)
 
-        # update balances dict
         balances[account_id] = new_balance
 
         tx_id = f"{target_date.isoformat()}-{i:04d}-{uuid.uuid5(uuid.NAMESPACE_URL, account_id + str(i)).hex[:8]}"
@@ -210,7 +282,14 @@ def generate_transactions_for_date(faker, accounts, devices, merchants, balances
             'login_attempts': login_attempts,
         })
 
-    # sort by timestamp to ensure sequential insertion (and balance logic preserves order)
+    # Log chaos injection results
+    if is_even_day:
+        print(f"  🔴 CHAOS MODE (even day {target_date.day}): {n_corrupted}/{n_tx} structural corruptions injected")
+        print(f"     → GX Core SHOULD FAIL and block the pipeline")
+    else:
+        print(f"  🟢 FRAUD MODE (odd day {target_date.day}): {n_fraud}/{n_tx} behavioral fraud patterns injected")
+        print(f"     → GX Core should PASS, ML should detect anomalies")
+
     tx_rows.sort(key=lambda r: r['transaction_date'])
     return tx_rows
 
@@ -275,6 +354,18 @@ def main():
         # idempotency: remove any existing transactions on this date
         deleted = delete_existing_transactions_for_date(conn, target_date)
         print(f"Deleted {deleted} pre-existing transactions for {target_date}")
+
+        # On ODD days: also purge the previous EVEN day's corrupted data
+        # so that GX Core validates a clean table and passes.
+        # This simulates a production remediation workflow where corrupted
+        # batches are rolled back before the next clean batch is ingested.
+        is_even_day = target_date.day % 2 == 0
+        if not is_even_day:
+            from datetime import timedelta as td
+            prev_day = target_date - td(days=1)
+            if prev_day.day % 2 == 0:  # previous day was even (corrupted)
+                purged = delete_existing_transactions_for_date(conn, prev_day)
+                print(f"  🧹 Purged {purged} corrupted rows from previous even day ({prev_day})")
 
         n_tx = random.randint(args.min, args.max)
         tx_rows = generate_transactions_for_date(faker, accounts_pool, devices_pool, merchants_pool, balances, target_date, n_tx)

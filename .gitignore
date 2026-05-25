@@ -1,18 +1,38 @@
+# --- Secrets ---
 .env
-.env.example
+gcp-key.json
+
+# --- Airflow ---
 logs/
+
+# --- dbt ---
+dbt/profiles.yml
+dbt/.user.yml
+dbt/target/
+dbt/logs/
+
+# --- Great Expectations ---
+great_expectations/uncommitted/
+
+# --- MLflow ---
+mlruns/
+
+# --- Docker ---
 postgres_data/
 marquez_data/
 superset_home/
+
+# --- Python ---
 *.pyc
 __pycache__/
-.venv
-venv
+.venv/
+venv/
+
+# --- Data artifacts ---
 *.csv
-gcp-key.json
-dbt/profiles.yml
-dbt/.user.yml
-mlruns/
 *.db
 *.pkl
 *.keras
+
+# --- Temp / test ---
+test_ol.py

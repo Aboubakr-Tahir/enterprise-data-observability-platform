@@ -32,7 +32,7 @@ from great_expectations.expectations import (
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GCP_KEYFILE = REPO_ROOT / "gcp-key.json"
-BQ_PROJECT = "gen-lang-client-0635762262"
+BQ_PROJECT = os.environ.get("GCP_PROJECT_ID", "gen-lang-client-0635762262")
 BQ_SCORED_TABLE = f"{BQ_PROJECT}.silver.silver_scored_transactions"
 
 

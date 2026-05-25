@@ -13,6 +13,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
     # For BigQuery / dbt inside Airflow containers
     GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcp-key.json
+    GCP_PROJECT_ID: "${GCP_PROJECT_ID}"
     DBT_PROFILES_DIR: /opt/airflow/dbt
   user: "${AIRFLOW_UID:-50000}:0"
   volumes:
