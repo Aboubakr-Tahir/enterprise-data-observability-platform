@@ -55,6 +55,28 @@
 
 ## 🧱 Technology Stack
 
+**Data & Analytics**
+![Google BigQuery](https://img.shields.io/badge/Google_BigQuery-669DF6?style=for-the-badge&logo=google-cloud&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+
+**Orchestration & Transformation**
+![Apache Airflow](https://img.shields.io/badge/Apache_Airflow-017CEE?style=for-the-badge&logo=Apache-Airflow&logoColor=white)
+![dbt](https://img.shields.io/badge/dbt-FF694B?style=for-the-badge&logo=dbt&logoColor=white)
+
+**Data Quality & Observability**
+![Great Expectations](https://img.shields.io/badge/Great_Expectations-E55344?style=for-the-badge)
+![Marquez](https://img.shields.io/badge/Marquez-000000?style=for-the-badge)
+![Apache Superset](https://img.shields.io/badge/Apache_Superset-00A699?style=for-the-badge&logo=apache&logoColor=white)
+
+**Machine Learning & Core**
+![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=for-the-badge&logo=MLflow&logoColor=white)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)
+
+<br>
+
 | Component             | Technology                 | Purpose                                           |
 |-----------------------|----------------------------|----------------------------------------------------|
 | Orchestration         | Apache Airflow 2.10        | Schedule & coordinate the pipeline                 |
@@ -73,21 +95,31 @@
 ## 📸 Interface Previews
 
 ### 1. Airflow (Orchestration & Status)
+> *The central nervous system of the DataOps platform. Airflow coordinates the ingestion, transformation, quality checks, and ML predictions in a sequential and fault-tolerant Directed Acyclic Graph (DAG).*
+
 ![Airflow DAG Part 1](images/airflow_dag_part_1.png)
 ![Airflow DAG Part 2](images/airflow_daf_part_2.png)
 ![Airflow DAG Part 3](images/airflow_dag_part_3.png)
 
 ### 2. Marquez (Data Lineage)
+> *End-to-end data lineage visualization using OpenLineage. Marquez provides root-cause analysis capabilities by mapping exactly how data flows from the Postgres source to the BigQuery analytical tables, highlighting dependencies and schema changes.*
+
 ![Marquez Lineage Graph](images/image-marquez.png)
 
 ### 3. Superset (BI & Fraud Alerting Dashboards)
+> *Business Intelligence and real-time alerting. The Financial Dashboard tracks legitimate transaction volumes and geographic distribution, while the Fraud Dashboard actively monitors anomalies quarantined by our Machine Learning models.*
+
 ![Financial Dashboard](images/dashboard_financiere_superset.png)
 ![Fraud Dashboard](images/dashboard_fraud_superset.png)
 
 ### 4. MLflow (Model Tracking)
+> *Machine Learning Operations (MLOps) tracking. MLflow stores all experiments, hyperparameters, and artifacts (like the serialized Isolation Forest model and the data scaler) ensuring complete reproducibility of our anomaly detection.*
+
 ![MLflow Tracking](images/ml_flow.png)
 
 ### 5. Data Architecture (BigQuery & Postgres)
+> *The underlying Medallion Architecture. Data originates in a transactional Postgres OLTP schema and is denormalized and enriched across Bronze, Silver, and Gold layers in Google BigQuery.*
+
 **PostgreSQL OLTP (Source):**
 ![Postgres Database](images/oltp_postgrsql_database.png)
 
