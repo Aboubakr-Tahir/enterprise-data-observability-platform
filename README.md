@@ -70,6 +70,33 @@
 
 ---
 
+## 📸 Interface Previews
+
+### 1. Airflow (Orchestration & Status)
+![Airflow DAG Part 1](images/airflow_dag_part_1.png)
+![Airflow DAG Part 2](images/airflow_daf_part_2.png)
+![Airflow DAG Part 3](images/airflow_dag_part_3.png)
+
+### 2. Marquez (Data Lineage)
+![Marquez Lineage Graph](images/image-marquez.png)
+
+### 3. Superset (BI & Fraud Alerting Dashboards)
+![Financial Dashboard](images/dashboard_financiere_superset.png)
+![Fraud Dashboard](images/dashboard_fraud_superset.png)
+
+### 4. MLflow (Model Tracking)
+![MLflow Tracking](images/ml_flow.png)
+
+### 5. Data Architecture (BigQuery & Postgres)
+**PostgreSQL OLTP (Source):**
+![Postgres Database](images/oltp_postgrsql_database.png)
+
+**BigQuery Medallion Architecture:**
+![Silver Layer](images/silver_layer_tables.png)
+![Gold Layer](images/gold_layer_tables.png)
+
+---
+
 ## 🚀 Quick Start (< 5 minutes)
 
 ### Prerequisites
@@ -298,33 +325,6 @@ docker compose down -v
 ### MLflow (ML Experiment Tracking)
 - **Purpose**: Track model versions, hyperparameters, and performance metrics
 - **Best for**: Comparing model runs, reproducing experiments
-
----
-
-## 📸 Interface Previews
-
-### 1. Airflow (Orchestration & Status)
-![Airflow DAG Part 1](images/airflow_dag_part_1.png)
-![Airflow DAG Part 2](images/airflow_daf_part_2.png)
-![Airflow DAG Part 3](images/airflow_dag_part_3.png)
-
-### 2. Marquez (Data Lineage)
-![Marquez Lineage Graph](images/image-marquez.png)
-
-### 3. Superset (BI & Fraud Alerting Dashboards)
-![Financial Dashboard](images/dashboard_financiere_superset.png)
-![Fraud Dashboard](images/dashboard_fraud_superset.png)
-
-### 4. MLflow (Model Tracking)
-![MLflow Tracking](images/ml_flow.png)
-
-### 5. Data Architecture (BigQuery & Postgres)
-**PostgreSQL OLTP (Source):**
-![Postgres Database](images/oltp_postgrsql_database.png)
-
-**BigQuery Medallion Architecture:**
-![Silver Layer](images/silver_layer_tables.png)
-![Gold Layer](images/gold_layer_tables.png)
 
 ---
 

@@ -15,6 +15,7 @@ x-airflow-common: &airflow-common
     GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcp-key.json
     GCP_PROJECT_ID: "${GCP_PROJECT_ID}"
     DBT_PROFILES_DIR: /opt/airflow/dbt
+    HOST_REPO_ROOT: "${PWD}"
   user: "${AIRFLOW_UID:-50000}:0"
   volumes:
     - ./dags:/opt/airflow/dags
@@ -25,7 +26,7 @@ x-airflow-common: &airflow-common
     - ./logs:/opt/airflow/logs
     - ./mlops:/opt/airflow/mlops
     - ./csv_denormalisation:/opt/airflow/csv_denormalisation
-    - ${PWD}/mlruns:${PWD}/mlruns
+    - ./mlruns:/opt/airflow/mlruns
   depends_on:
     postgres:
       condition: service_healthy
@@ -191,13 +192,13 @@ services:
     ports:
       - "5050:5050"
     volumes:
-      - ${PWD}/mlruns:${PWD}/mlruns
+      - ./mlruns:/opt/airflow/mlruns
     # Use SQLite as the backend store and point both container and host to the
     # same absolute path so local clients and the container share the artifact store.
     command: >-
       mlflow server --host 0.0.0.0 --port 5050
-      --backend-store-uri sqlite:////${PWD}/mlruns/mlflow.db
-      --default-artifact-root file://${PWD}/mlruns
+      --backend-store-uri sqlite:////opt/airflow/mlruns/mlflow.db
+      --default-artifact-root file:///opt/airflow/mlruns
     networks:
       - data_stack
 
