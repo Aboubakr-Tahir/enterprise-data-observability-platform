@@ -4,54 +4,29 @@
 
 ---
 
-## 🏗️ Architecture Overview
+### ⚠️ The Problem: Data Silent Failures & The "Black Box" Pipeline
+In modern enterprise environments, data is the lifeblood of decision-making and product execution. However, pipelines fail silently. A sudden schema shift (e.g., a critical `amount` column changing from `FLOAT` to `STRING`), a corrupted upstream batch (e.g., negative values in transaction volumes), or an undetected drift in transaction behavior (e.g., quiet fraud) can propagate through Bronze, Silver, and Gold layers completely unnoticed. 
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  DATA SOURCE                                                         │
-│  Faker → PostgreSQL (core_banking schema)                            │
-│  • 85% normal data · 5% structural corruptions · 10% fraud patterns │
-└──────────────┬───────────────────────────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│  AIRFLOW DAG: bank_dataops_pipeline                                  │
-│                                                                      │
-│  ┌────────────┐  ┌──────────┐  ┌────────────┐  ┌──────────────┐     │
-│  │ 1. Faker   │─▶│ 2. GX    │─▶│ 3. PG→BQ   │─▶│ 4. dbt       │     │
-│  │ (generate) │  │ (quality)│  │ (bronze)   │  │ (staging)    │     │
-│  └────────────┘  └──────────┘  └────────────┘  └──────┬───────┘     │
-│                                                        │             │
-│  ┌────────────┐  ┌──────────┐  ┌────────────┐  ┌──────▼───────┐     │
-│  │ 9. dbt     │◀─│ 8. GX ML │◀─│ 7. ML      │◀─│ 6. dbt test  │     │
-│  │ (gold)     │  │ (validate│  │ (predict)  │  │ (integrity)  │     │
-│  └────────────┘  └──────────┘  └────────────┘  └──────────────┘     │
-│         │                                       ┌──────────────┐     │
-│         └──────────────────────────────────────▶│ 5. dbt       │     │
-│                                                 │ (silver)     │     │
-│                                                 └──────────────┘     │
-│  [OpenLineage events → Marquez Lineage Graph]                        │
-└──────────────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│  BIGQUERY DATA WAREHOUSE (Medallion Architecture)                    │
-│  ┌────────┐  ┌───────────┐  ┌─────────┐  ┌──────────────────────┐   │
-│  │ bronze │─▶│ analytics │─▶│ silver  │─▶│ gold                 │   │
-│  │ (raw)  │  │ (staging) │  │(enriched│  │ fact + quarantine    │   │
-│  └────────┘  └───────────┘  └─────────┘  └──────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│  OBSERVABILITY & REPORTING                                           │
-│  • Superset Dashboards (fraud alerts, financial KPIs)                │
-│  • Marquez Lineage UI (data flow visualization)                      │
-│  • MLflow Experiment Tracking (model versions & metrics)             │
-└──────────────────────────────────────────────────────────────────────┘
-```
+By the time the issue is discovered:
+- **Business Intelligence (BI) dashboards** display completely incorrect metrics, misleading stakeholders.
+- **Machine Learning models** generate faulty predictions on corrupted inputs, degrading downstream product experiences.
+- **Engineering teams** have zero visibility into *where* or *when* the mutation occurred, spending days manually debugging the codebase and database states.
 
----
+This lack of **Data Observability** and **Data Quality Assurance** costs enterprises millions in lost revenue, operational friction, and degraded trust.
+
+### 🌟 Why Enterprise Data Observability is Crucial
+This project resolves this critical enterprise bottleneck by implementing a **proactive defense-in-depth architecture**:
+1. **Preventive Quality Gates**: Validating data at the entry point (Postgres ingestion) and exit point (ML predictions) using **Great Expectations** before corruption propagates.
+2. **End-to-End Lineage Tracking**: Utilizing **OpenLineage + Marquez** to visually audit the entire data journey, mapping schema evolutions and tracing failures back to the exact Airflow task and run ID.
+3. **ML-Driven Behavior Monitoring**: Applying Keras Autoencoders & Isolation Forests (tracked by **MLflow**) to identify sophisticated behavioral anomalies that standard business rules miss.
+4. **Chaos Engineering**: Intentionally injecting structural and behavioral anomalies to prove the pipeline's resilience and alerting capabilities.
+
+### 💼 Why Every Data Engineer Needs to Master This
+Modern Data Engineering is no longer just about writing code to move data from Point A to Point B. Companies want engineers who can build **reliable, self-healing, and fully auditable data platforms**. 
+Mastering this stack demonstrates an engineer's ability to:
+- **Build trust in data**: Ensuring BI reports and ML predictions are always validated and clean.
+- **Minimize Mean Time to Resolution (MTTR)**: Using lineage graphs to pinpoint bugs in minutes rather than days.
+- **Implement Enterprise Standards**: Adhering to Medallion Architectures, continuous validation, and robust MLOps practices.
 
 ## 🧱 Technology Stack
 
@@ -74,6 +49,13 @@
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)
+---
+
+## 🏗️ Architecture Overview
+
+![High-Level Architecture](images/bank_data_observation_diagram.png)
+
+
 
 <br>
 
